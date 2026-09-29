@@ -41,6 +41,11 @@ export function ReportView({
         </p>
       ) : null}
 
+      <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-300">
+        Tu diagnóstico también llegará por correo. Puede tardar hasta 5 minutos;
+        si no lo ves, revisa spam o promociones.
+      </p>
+
       {/* 1. Veredicto */}
       <section>
         <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
