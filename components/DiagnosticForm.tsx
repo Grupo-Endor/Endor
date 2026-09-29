@@ -18,7 +18,7 @@ export const RUBROS = [
   "Organizaciones sin fines de lucro", "Gobierno y sector público", "Otro",
 ];
 
-const ALCANCES = ["Local", "Nacional", "Exportación"];
+const ALCANCES = ["Local", "Nacional", "Exportación", "Internacional"];
 
 const schema = z.object({
   nombre: z.string().trim().min(1, "Escribe tu nombre").max(120),
@@ -32,7 +32,7 @@ const schema = z.object({
   tiktok: z.string().trim().max(120).optional(),
   linkedin: z.string().trim().max(120).optional(),
   rubro: z.string().min(1, "Elige tu giro"),
-  ciudad: z.string().trim().min(1, "Escribe tu ciudad").max(120),
+  ciudad: z.string().trim().min(1, "Escribe tu ciudad o países").max(200),
   alcance: z.string().min(1, "Elige tu alcance"),
   comp1: z.string().trim().min(1, "Escribe al menos un competidor").max(200),
   comp2: z.string().trim().max(200).optional(),
@@ -97,10 +97,11 @@ const RUBRO_TO_SECTOR: Record<string, string> = {
   "Otro": "otro",
 };
 
-function mapReach(alcance: string): "local" | "nacional" | "exportacion" {
+function mapReach(alcance: string): "local" | "nacional" | "exportacion" | "internacional" {
   const a = alcance.toLowerCase();
   if (a.startsWith("nac")) return "nacional";
   if (a.startsWith("exp")) return "exportacion";
+  if (a.startsWith("int")) return "internacional";
   return "local";
 }
 
@@ -119,6 +120,7 @@ export function DiagnosticForm() {
   const [errors, setErrors] = useState<Partial<Record<Key | "presencia" | "logo" | "submit", string>>>({});
   const [logo, setLogo] = useState<string>("");
   const [logoDataUrl, setLogoDataUrl] = useState<string>("");
+  const [materiales, setMateriales] = useState<{ filename: string; data_url?: string }[]>([]);
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -165,6 +167,12 @@ export function DiagnosticForm() {
           logo_data_url: logoDataUrl || undefined,
           colors: "No proporcionado en formulario landing",
           fonts: "No proporcionado en formulario landing",
+          materials: materiales.length
+            ? materiales.map((m) => ({
+                filename: m.filename,
+                ...(m.data_url ? { data_url: m.data_url } : {}),
+              }))
+            : undefined,
         },
         presence: {
           website: values.sitio || undefined,
@@ -288,6 +296,52 @@ export function DiagnosticForm() {
               />
               {errors.logo && <span className="mt-1 block text-xs text-destructive">{errors.logo}</span>}
             </label>
+            <label className="block md:col-span-2">
+              <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em]">
+                Imágenes de referencia de materiales donde se aplica tu marca (opcional)
+              </span>
+              <span className="mb-3 block text-sm text-muted-foreground">
+                Por ejemplo, empaques, uniformes, señalética o piezas publicitarias. Puedes seleccionar varias imágenes (máx. 5).
+              </span>
+              <input
+                type="file"
+                accept="image/png,image/svg+xml,image/jpeg,image/webp"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []).slice(0, 5);
+                  if (!files.length) {
+                    setMateriales([]);
+                    return;
+                  }
+                  Promise.all(
+                    files.map(
+                      (file) =>
+                        new Promise<{ filename: string; data_url?: string }>((resolve) => {
+                          if (file.size > 200_000) {
+                            resolve({ filename: file.name });
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () =>
+                            resolve({
+                              filename: file.name,
+                              data_url: String(reader.result ?? ""),
+                            });
+                          reader.onerror = () => resolve({ filename: file.name });
+                          reader.readAsDataURL(file);
+                        })
+                    )
+                  ).then(setMateriales);
+                }}
+                className="block w-full border border-dashed border-border bg-secondary p-4 text-sm file:mr-4 file:border-0 file:bg-foreground file:px-4 file:py-2 file:text-xs file:font-bold file:uppercase file:tracking-widest file:text-background"
+              />
+              {materiales.length > 0 && (
+                <span className="mt-2 block text-sm text-muted-foreground">
+                  {materiales.length} {materiales.length === 1 ? "imagen seleccionada" : "imágenes seleccionadas"}:{" "}
+                  {materiales.map((m) => m.filename).join(", ")}
+                </span>
+              )}
+            </label>
             <div className="md:col-span-2">{field("sitio", "Sitio web", { placeholder: "https://" })}</div>
             {field("instagram", "Instagram", { placeholder: "@tumarca" })}
             {field("facebook", "Facebook")}
@@ -306,7 +360,7 @@ export function DiagnosticForm() {
               </select>
               {errors.rubro && <span className="mt-1 block text-xs text-destructive">{errors.rubro}</span>}
             </label>
-            {field("ciudad", "Ciudad")}
+            {field("ciudad", "Ciudad o Países")}
             <label className="block">
               <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em]">Alcance</span>
               <select className={inputClass} value={values.alcance} onChange={set("alcance")}>

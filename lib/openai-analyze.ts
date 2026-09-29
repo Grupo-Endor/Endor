@@ -1,5 +1,6 @@
 /**
- * Análisis con OpenAI — dos corridas independientes, promedio en scoring.
+ * Análisis LLM — dos corridas independientes, promedio en scoring.
+ * OpenAI primero; fallback OpenRouter si no hay créditos.
  *
  * PRINCIPIO RECTOR (inyectado al system prompt):
  * Diagnosticar, NUNCA recetar.
@@ -179,13 +180,103 @@ function parseRun(raw: string): LlmRunResult {
   };
 }
 
+function openaiKey(): string | undefined {
+  return process.env.OPENAI_API_KEY || process.env.OPEN_AI_KEY || undefined;
+}
+
+function openRouterKey(): string | undefined {
+  return (
+    process.env.OPEN_ROUTER_EMILIO ||
+    process.env.OPENROUTER_API_KEY ||
+    undefined
+  );
+}
+
+/** True when any LLM provider key is configured (not mock). */
+export function hasLlmProvider(): boolean {
+  return Boolean(openaiKey() || openRouterKey());
+}
+
+function isProviderFailure(err: unknown): boolean {
+  const e = err as {
+    status?: number;
+    code?: string;
+    message?: string;
+    error?: { code?: string; type?: string; message?: string };
+  };
+  const status = e?.status;
+  const code = String(e?.code || e?.error?.code || "").toLowerCase();
+  const type = String(e?.error?.type || "").toLowerCase();
+  const msg = String(e?.message || e?.error?.message || "").toLowerCase();
+  if (status === 401 || status === 402 || status === 429) return true;
+  if (
+    code.includes("insufficient_quota") ||
+    code.includes("billing") ||
+    code.includes("rate_limit") ||
+    type.includes("insufficient_quota") ||
+    type.includes("billing")
+  )
+    return true;
+  if (
+    msg.includes("insufficient_quota") ||
+    msg.includes("exceeded your current quota") ||
+    msg.includes("billing") ||
+    msg.includes("credit") ||
+    msg.includes("payment required") ||
+    msg.includes("rate limit")
+  )
+    return true;
+  return false;
+}
+
+type Provider = "openai" | "openrouter";
+
+function makeClient(provider: Provider): { client: OpenAI; model: string; label: string } {
+  if (provider === "openai") {
+    const key = openaiKey();
+    if (!key) throw new Error("OPENAI_API_KEY / OPEN_AI_KEY ausente");
+    return {
+      client: new OpenAI({
+        apiKey: key,
+        ...(process.env.OPENAI_BASE_URL
+          ? { baseURL: process.env.OPENAI_BASE_URL }
+          : {}),
+      }),
+      // Direct OpenAI model id
+      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+      label: "openai",
+    };
+  }
+  const key = openRouterKey();
+  if (!key) throw new Error("OPEN_ROUTER_EMILIO / OPENROUTER_API_KEY ausente");
+  // Cost/quality sweet spot for structured ES diagnosis JSON:
+  // gpt-4o-mini via OpenRouter (same quality as primary, billed on OpenRouter credits).
+  const model =
+    process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini";
+  return {
+    client: new OpenAI({
+      apiKey: key,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "HTTP-Referer":
+          process.env.NEXT_PUBLIC_APP_URL ??
+          "https://endor-diagnostico.vercel.app",
+        "X-Title": "Endor Diagnostico de Marca",
+      },
+    }),
+    model,
+    label: "openrouter",
+  };
+}
+
 async function singleRun(
   client: OpenAI,
+  model: string,
   intake: DiagnosisIntake,
   runLabel: string
 ): Promise<LlmRunResult> {
   const completion = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    model,
     temperature: 0.4,
     response_format: { type: "json_object" },
     messages: [
@@ -194,8 +285,20 @@ async function singleRun(
     ],
   });
   const content = completion.choices[0]?.message?.content;
-  if (!content) throw new Error(`OpenAI run ${runLabel} sin contenido`);
+  if (!content) throw new Error(`LLM run ${runLabel} sin contenido`);
   return parseRun(content);
+}
+
+async function dualRuns(
+  intake: DiagnosisIntake,
+  provider: Provider
+): Promise<[LlmRunResult, LlmRunResult]> {
+  const { client, model, label } = makeClient(provider);
+  console.info(`[analyze] using provider=${label} model=${model}`);
+  return Promise.all([
+    singleRun(client, model, intake, "A"),
+    singleRun(client, model, intake, "B"),
+  ]);
 }
 
 function preferText(a: string, b: string): string {
@@ -204,22 +307,46 @@ function preferText(a: string, b: string): string {
 
 /**
  * Dos corridas independientes → promedio de scores → reporte.
- * Sin OPENAI_API_KEY → mock estructurado.
+ * Sin ninguna API key → mock estructurado.
+ * Orden: OpenAI (OPENAI_API_KEY | OPEN_AI_KEY) → si falla por créditos/cuota,
+ * OpenRouter (OPEN_ROUTER_EMILIO | OPENROUTER_API_KEY) con modelo eficiente.
  */
 export async function analyzeBrand(
   intake: DiagnosisIntake
 ): Promise<DiagnosisReport> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  if (!hasLlmProvider()) {
     return buildMockReport(intake);
   }
 
-  const client = new OpenAI({ apiKey });
+  let runA: LlmRunResult;
+  let runB: LlmRunResult;
 
-  const [runA, runB] = await Promise.all([
-    singleRun(client, intake, "A"),
-    singleRun(client, intake, "B"),
-  ]);
+  // Prefer OpenAI when configured; otherwise OpenRouter.
+  const primary: Provider = openaiKey() ? "openai" : "openrouter";
+  const fallback: Provider | null =
+    primary === "openai" && openRouterKey()
+      ? "openrouter"
+      : primary === "openrouter" && openaiKey()
+        ? "openai"
+        : null;
+
+  try {
+    [runA, runB] = await dualRuns(intake, primary);
+  } catch (err) {
+    const status = (err as { status?: number })?.status;
+    const shouldFallback =
+      Boolean(fallback) &&
+      (isProviderFailure(err) || (typeof status === "number" && status >= 500));
+    if (shouldFallback && fallback) {
+      console.warn(
+        `[analyze] ${primary} failed; falling back to ${fallback}`,
+        err instanceof Error ? err.message : err
+      );
+      [runA, runB] = await dualRuns(intake, fallback);
+    } else {
+      throw err;
+    }
+  }
 
   const runs = Object.fromEntries(
     DIMENSION_KEYS.map((key) => [

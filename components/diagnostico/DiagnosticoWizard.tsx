@@ -353,6 +353,9 @@ export function DiagnosticoWizard() {
                 <option value="exportacion" className="bg-endor-black">
                   Exportación
                 </option>
+                <option value="internacional" className="bg-endor-black">
+                  Internacional
+                </option>
               </select>
             </Field>
           </div>

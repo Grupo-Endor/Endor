@@ -25,6 +25,7 @@ const REPORT = [
   ["Veredicto", "Una oración que resume dónde estás parado."],
   ["Puntaje global", "Tu calificación y tu lugar contra el grupo analizado."],
   ["Semáforo de 6 dimensiones", "Rojo, amarillo o verde. Sin rodeos."],
+  ["Lectura PAI Concept", "Producto → Atributo → Idea → Concepto. Ves qué eslabón está claro, difuso o ausente y dónde se rompe la cadena."],
   ["Los 3 hallazgos que más pesan", "Cada uno con su evidencia: captura, conteo o cita."],
   ["Lo que ya funciona", "Tus verdes, para que confíes en que los rojos también son ciertos."],
   ["El patrón de tu sector", "Lo que todos hacen igual, y cuántos elementos tuyos caen ahí."],
@@ -159,6 +160,43 @@ export default function HomePage() {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+
+      {/* Lectura PAI */}
+      <section className="border-t border-border py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4 md:px-6">
+          <Reveal>
+            <p className="section-label">Lectura PAI Concept</p>
+            <h2 className="mt-4 max-w-3xl text-3xl font-extrabold leading-tight md:text-5xl">
+              ¿Tu marca tiene un concepto, o solo piezas sueltas?
+            </h2>
+            <p className="mt-6 max-w-2xl text-muted-foreground">
+              Leemos lo que tu marca ya comunica para seguir la cadena Producto → Atributo → Idea → Concepto.
+              Te mostramos qué eslabón está claro, cuál es difuso y dónde se interrumpe, sin inventar el concepto por ti.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+            {(
+              [
+                ["01", "Producto", "¿Se entiende qué vendes y a quién?"],
+                ["02", "Atributo", "¿Hay un rasgo que tu material repite y demuestra?"],
+                ["03", "Idea", "¿Eso se convierte en algo que le importa a tu cliente?"],
+                ["04", "Concepto", "¿Logo, tono, contenido y oferta apuntan a una sola idea?"],
+              ] as const
+            ).map(([n, title, text]) => (
+              <div key={title} className="bg-background p-7">
+                <span className="font-accent text-3xl italic text-muted-foreground">{n}</span>
+                <h3 className="mt-5 text-xl font-extrabold">{title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 max-w-3xl text-sm text-muted-foreground">
+            La lectura no lleva puntaje: contrasta lo que dijiste que quieres transmitir con lo que muestran tus materiales.
+            Señala el eslabón roto; definir el concepto es parte del trabajo posterior de Ēndor.
+          </p>
         </div>
       </section>
 
