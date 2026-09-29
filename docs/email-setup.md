@@ -1,7 +1,17 @@
 # Email del diagnóstico al cliente
 
-Cuando `/api/analyze` termina con `status: "ready"`, se intenta enviar un HTML
-a `intake.contact.work_email`. Si `needs_review`, **no** se envía.
+Cuando `/api/analyze` termina con `status: "ready"` **y** el reporte es real
+(no mock/demo/placeholder), se intenta enviar un HTML a `intake.contact.work_email`.
+
+**NUNCA** se envía correo si:
+- `status !== "ready"` (p. ej. `needs_review` / `analyzing`)
+- `report` ausente o vacío
+- `report.mock === true` o scores/copy coinciden con `buildMockReport`
+- el HTML generado parece PLACEHOLDER / demostración
+
+Gates en `lib/send-report-email.ts` **y** `app/api/analyze/route.ts` (belt + suspenders).
+Se loguea claramente `[email] SKIPPED (...)` cuando se omite.
+
 
 ## Orden de providers
 
@@ -23,5 +33,7 @@ Proyecto `endor-diagnostico` / team `endor2`:
 
 ## Observabilidad
 
-El resultado del envío se escribe en `report._email` (`email_sent`, `email_error`, …)
-y `diagnoses.email_sent_at` cuando el envío fue exitoso.
+El resultado del envío se escribe en `report._email` (`email_sent`, `email_error`,
+`email_status`, …), `diagnoses.email_sent_at` cuando el envío fue exitoso, y
+`diagnoses.email_status` (`sent` | `skipped_mock` | `skipped_not_ready` |
+`skipped_invalid` | `skipped_no_provider` | `failed`).
