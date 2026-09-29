@@ -171,7 +171,10 @@ export function ReportView({
           Un solo siguiente paso: agenda una llamada de 20 minutos.
         </p>
         <a
-          href="https://cal.com"
+          href={
+            process.env.NEXT_PUBLIC_BOOKING_URL ||
+            "https://calendar.app.google/P3Pi2TQHQ8cSgr6N7"
+          }
           target="_blank"
           rel="noreferrer"
           className="mt-6 inline-flex rounded-full bg-endor-accent px-6 py-3 text-sm font-semibold text-endor-black"
