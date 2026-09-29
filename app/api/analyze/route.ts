@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { parseIntake } from "@/lib/validate-intake";
-import { analyzeBrand } from "@/lib/openai-analyze";
+import { analyzeBrand, hasLlmProvider } from "@/lib/openai-analyze";
 import {
   createServerClient,
   createServiceClient,
@@ -13,7 +13,7 @@ import { randomUUID } from "crypto";
 
 /**
  * POST /api/analyze
- * Valida intake → guarda fila → 2 corridas OpenAI (o mock) → reporte JSON.
+ * Valida intake → guarda fila → 2 corridas LLM OpenAI/OpenRouter (o mock) → reporte JSON.
  * Si status === ready → intenta email al cliente (Composio Gmail / Resend).
  * Si needs_review → no envía correo.
  */
@@ -25,6 +25,18 @@ export async function POST(req: Request) {
       if (len > 200_000) {
         body.identity.logo_data_url = "[omitted: too large for JSON body demo]";
       }
+    }
+    if (Array.isArray(body?.identity?.materials)) {
+      body.identity.materials = body.identity.materials
+        .slice(0, 5)
+        .map((m: { filename?: string; data_url?: string }) => {
+          const filename = String(m?.filename ?? "material").slice(0, 255);
+          const data_url = m?.data_url ? String(m.data_url) : undefined;
+          if (data_url && data_url.length > 200_000) {
+            return { filename, data_url: "[omitted: too large]" };
+          }
+          return data_url ? { filename, data_url } : { filename };
+        });
     }
 
     const intake = parseIntake(body);
@@ -44,6 +56,11 @@ export async function POST(req: Request) {
             status: "analyzing",
             sector: intake.scope.sector,
             city: intake.scope.city,
+            contact_name: intake.contact.full_name,
+            contact_email: intake.contact.work_email,
+            contact_phone: intake.contact.whatsapp,
+            company_name: intake.contact.company,
+            reach: intake.scope.reach,
             needs_human_review: false,
           })
           .select("id")
@@ -115,7 +132,7 @@ export async function POST(req: Request) {
       id,
       status,
       report,
-      mock: Boolean(report.mock) || !process.env.OPENAI_API_KEY,
+      mock: Boolean(report.mock) || !hasLlmProvider(),
       supabase: hasSupabaseEnv(),
       email_sent,
       ...(email_error ? { email_error } : {}),
