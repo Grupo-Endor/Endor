@@ -7,12 +7,16 @@
  * - Global nunca arriba de 60 si Diferenciación real está en rojo
  * - Dos corridas: si una dimensión difiere >15 → needs_human_review
  * - Verde no se regala: superar mediana del rubro (calibración en análisis LLM)
+ * - PAI: estados claro|difuso|ausente; al discrepar → preferir más severo
  */
 
 import {
   DIMENSION_META,
   type DimensionKey,
   type DimensionScore,
+  type PaiChain,
+  type PaiLinkKey,
+  type PaiStatus,
   type SemaphoreColor,
 } from "@/types/diagnosis";
 
@@ -102,4 +106,42 @@ export function computeGlobalScore(dimensions: DimensionScore[]): {
 
 export function anyNeedsHumanReview(dimensions: DimensionScore[]): boolean {
   return dimensions.some((d) => d.needs_human_review);
+}
+
+const PAI_SEVERITY: Record<PaiStatus, number> = {
+  claro: 0,
+  difuso: 1,
+  ausente: 2,
+};
+
+const PAI_KEYS: PaiLinkKey[] = ["producto", "atributo", "idea", "concepto"];
+
+function normalizePaiStatus(v: unknown): PaiStatus {
+  const s = String(v ?? "").toLowerCase().trim();
+  if (s === "claro" || s === "difuso" || s === "ausente") return s;
+  return "ausente";
+}
+
+/** Si dos corridas discrepan → preferir el más severo y marcar revisión humana. */
+export function mergePaiChains(
+  a: Partial<PaiChain> | null | undefined,
+  b: Partial<PaiChain> | null | undefined
+): { pai: PaiChain; needs_human_review: boolean } {
+  let needs = false;
+  const pai = {} as PaiChain;
+  for (const key of PAI_KEYS) {
+    const sa = normalizePaiStatus(a?.[key]);
+    const sb = normalizePaiStatus(b?.[key]);
+    if (sa !== sb) needs = true;
+    pai[key] = PAI_SEVERITY[sa] >= PAI_SEVERITY[sb] ? sa : sb;
+  }
+  return { pai, needs_human_review: needs };
+}
+
+/** Primer eslabón no-claro (más temprano en la cadena). */
+export function brokenPaiLink(pai: PaiChain): PaiLinkKey | null {
+  for (const key of PAI_KEYS) {
+    if (pai[key] !== "claro") return key;
+  }
+  return null;
 }
