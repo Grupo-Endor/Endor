@@ -506,6 +506,16 @@ export async function sendReportEmail(params: {
 }
 
 
+export type SalesMeetingInfo = {
+  startIso: string;
+  endIso?: string;
+  summary?: string;
+  htmlLink?: string;
+  inviteeEmails?: string[];
+  /** Preformatted America/Merida label for the email banner */
+  formattedMerida?: string;
+};
+
 /** Destinataria comercial del alert interno (Patricia Fernández). */
 export const SALES_ALERT_TO = "pfernandez@grupoendor.com";
 
@@ -517,8 +527,9 @@ export function buildSalesAlertEmailHtml(params: {
   intake: DiagnosisIntake;
   report: DiagnosisReport;
   diagnosisId: string;
+  meeting?: SalesMeetingInfo;
 }): { subject: string; html: string; to: string } {
-  const { intake, report, diagnosisId } = params;
+  const { intake, report, diagnosisId, meeting } = params;
   const company = intake.contact.company || "(sin empresa)";
   const contactName = intake.contact.full_name || "(sin nombre)";
   const contactEmail = intake.contact.work_email || "—";
@@ -563,6 +574,23 @@ export function buildSalesAlertEmailHtml(params: {
 
   const whyLead = `Score ${report.global_score}/100 (${colorLabel}). ${escapeHtml(report.verdict)} Abrir conversación por: ${escapeHtml(report.cta.phrase)} Perfil CTA interno: ${escapeHtml(report.cta.profile)} / hint ${escapeHtml(report.cta.service_hint)}.`;
 
+  const meetingWhen =
+    meeting?.formattedMerida ||
+    meeting?.startIso ||
+    "";
+  const meetingInvitees = (meeting?.inviteeEmails || [])
+    .map((e) => escapeHtml(e))
+    .join(", ");
+  const meetingBlock = meetingWhen
+    ? `<tr><td style="padding:18px 28px;background:#ecfdf5;border-bottom:1px solid #a7f3d0;">
+    <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#065f46;">Fecha / hora de la cita (America/Merida)</p>
+    <p style="margin:0;font-size:18px;font-weight:700;color:#064e3b;">${escapeHtml(meetingWhen)}</p>
+    ${meeting?.summary ? `<p style="margin:8px 0 0;font-size:13px;color:#065f46;">Evento: ${escapeHtml(meeting.summary)}</p>` : ""}
+    ${meetingInvitees ? `<p style="margin:6px 0 0;font-size:13px;color:#047857;">Invitee: ${meetingInvitees}</p>` : ""}
+    ${meeting?.htmlLink ? `<p style="margin:10px 0 0;font-size:12px;"><a href="${escapeHtml(meeting.htmlLink)}" style="color:#047857;">Abrir en Google Calendar</a></p>` : ""}
+  </td></tr>`
+    : "";
+
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -571,10 +599,12 @@ export function buildSalesAlertEmailHtml(params: {
 <tr><td align="center">
 <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
   <tr><td style="background:#7c2d12;color:#fff;padding:24px 28px;">
-    <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85;">Ēndor · Alert comercial</div>
+    <div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;opacity:0.85;">Ēndor · Cita agendada</div>
     <h1 style="margin:8px 0 0;font-size:20px;">Lead: ${escapeHtml(company)}</h1>
     <p style="margin:8px 0 0;font-size:14px;opacity:0.95;">Score <strong style="color:${globalHex};">${report.global_score}</strong> · ${escapeHtml(colorLabel)}</p>
   </td></tr>
+
+  ${meetingBlock}
 
   <tr><td style="padding:24px 28px;">
     <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#737373;">Contacto</p>
@@ -620,7 +650,9 @@ export function buildSalesAlertEmailHtml(params: {
 
   return {
     to: SALES_ALERT_TO,
-    subject: `[Endor Diagnóstico] Lead: ${company} — score ${report.global_score}`,
+    subject: meetingWhen
+      ? `[Endor] Cita agendada: ${company} — ${meetingWhen} (score ${report.global_score})`
+      : `[Endor Diagnóstico] Lead: ${company} — score ${report.global_score}`,
     html,
   };
 }
@@ -634,6 +666,8 @@ export async function sendSalesAlertEmail(params: {
   report: DiagnosisReport;
   diagnosisId: string;
   status?: string;
+  /** When set (booking flow), banner includes meeting date/time. */
+  meeting?: SalesMeetingInfo;
 }): Promise<EmailSendResult> {
   const gate = assertReportEmailable({
     report: params.report,
@@ -651,7 +685,12 @@ export async function sendSalesAlertEmail(params: {
     };
   }
 
-  const { to, subject, html } = buildSalesAlertEmailHtml(params);
+  const { to, subject, html } = buildSalesAlertEmailHtml({
+    intake: params.intake,
+    report: params.report,
+    diagnosisId: params.diagnosisId,
+    meeting: params.meeting,
+  });
   // Sales HTML usa títulos distintos al correo cliente; no usar looksLikePlaceholderHtml.
   const trimmed = html.replace(/\s+/g, " ").trim();
   if (!trimmed || trimmed.length < 200) {
