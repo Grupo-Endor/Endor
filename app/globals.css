@@ -1,30 +1,175 @@
 @import "tailwindcss";
 
-@theme {
+/*
+ * Endor design system — Landing "Brand Insight Hub" (Lovable port).
+ * Blanco, negro, gris claro y amarillo Endor. Prohibido el morado.
+ * Mulish (sustituto de Muli) para titulares y cuerpo;
+ * Playfair Display solo como acento editorial (cursiva).
+ */
+
+@theme inline {
+  --font-sans: var(--font-mulish), "Mulish", ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-playfair), "Playfair Display", Georgia, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-signal-red: var(--signal-red);
+  --color-signal-yellow: var(--signal-yellow);
+  --color-signal-green: var(--signal-green);
+  /* Compat con páginas oscuras legacy (diagnostico/reporte) */
   --color-endor-black: #0a0a0a;
   --color-endor-white: #fafafa;
   --color-endor-accent: #ffe255;
   --color-endor-muted: #a3a3a3;
-  --font-sans: "Mulish", ui-sans-serif, system-ui, sans-serif;
 }
 
-html {
-  scroll-behavior: smooth;
+:root {
+  --radius: 0.25rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.17 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.17 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.17 0 0);
+  --primary: oklch(0.87 0.175 95.5);
+  --primary-foreground: oklch(0.17 0 0);
+  --secondary: oklch(0.962 0.004 95);
+  --secondary-foreground: oklch(0.17 0 0);
+  --muted: oklch(0.962 0.004 95);
+  --muted-foreground: oklch(0.48 0.008 95);
+  --accent: oklch(0.962 0.004 95);
+  --accent-foreground: oklch(0.17 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.005 95);
+  --input: oklch(0.9 0.005 95);
+  --ring: oklch(0.87 0.175 95.5);
+  --signal-red: oklch(0.6 0.2 27);
+  --signal-yellow: oklch(0.87 0.175 95.5);
+  --signal-green: oklch(0.65 0.15 150);
 }
 
-body {
-  background: var(--color-endor-black);
-  color: var(--color-endor-white);
-  font-family: var(--font-sans);
-  font-weight: 400;
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
-/* Mulish: evitar weight 700 (manual de marca) */
-.font-semibold {
-  font-weight: 600;
+.font-accent {
+  font-family: var(--font-accent);
 }
-.font-bold {
-  font-weight: 600;
+
+/* Etiqueta de sección */
+@utility section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* CTA principal Endor: amarillo, mayúsculas, tracking amplio */
+@utility btn-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-primary);
+  color: var(--color-primary-foreground);
+  padding: 1rem 2rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: color-mix(in oklab, var(--color-primary) 88%, black);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-cta-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-foreground);
+  color: var(--color-background);
+  padding: 1rem 2rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+/* Scope oscuro para /diagnostico y /reporte (wizard legacy) */
+.theme-dark {
+  --background: oklch(0.14 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.17 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --border: oklch(0.28 0 0);
+  --input: oklch(0.28 0 0);
+  background-color: #0a0a0a;
+  color: #fafafa;
 }
 
 ::selection {
