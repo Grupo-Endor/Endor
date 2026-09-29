@@ -17,6 +17,15 @@ export const intakeSchema = z.object({
     logo_data_url: z.string().optional(),
     colors: z.string().min(1),
     fonts: z.string().min(1),
+    materials: z
+      .array(
+        z.object({
+          filename: z.string().min(1).max(255),
+          data_url: z.string().max(220_000).optional(),
+        })
+      )
+      .max(5)
+      .optional(),
   }),
   presence: z
     .object({
@@ -36,7 +45,7 @@ export const intakeSchema = z.object({
   scope: z.object({
     sector: z.enum(sectorIds),
     city: z.string().min(2),
-    reach: z.enum(["local", "nacional", "exportacion"]),
+    reach: z.enum(["local", "nacional", "exportacion", "internacional"]),
   }),
   competitors: z
     .array(
