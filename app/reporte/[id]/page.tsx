@@ -96,10 +96,10 @@ export default async function ReportePage({
   const { report, company } = await loadReport(id);
 
   return (
-    <div className="min-h-screen">
+    <div className="theme-dark min-h-screen">
       <header className="border-b border-white/10 px-5 py-4">
         <div className="mx-auto flex max-w-2xl items-center justify-between">
-          <Link href="/">
+          <Link href="/" className="text-white">
             <EndorLogo className="h-7 w-auto" />
           </Link>
           <Link
