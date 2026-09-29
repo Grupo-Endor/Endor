@@ -23,6 +23,10 @@ const PAI_COLOR: Record<PaiStatus, string> = {
 
 const PAI_ORDER: PaiLinkKey[] = ["producto", "atributo", "idea", "concepto"];
 
+const BOOKING_URL =
+  process.env.NEXT_PUBLIC_BOOKING_URL ||
+  "https://calendar.app.google/P3Pi2TQHQ8cSgr6N7";
+
 export function ReportView({
   report,
   company,
@@ -34,13 +38,6 @@ export function ReportView({
 }) {
   return (
     <article className="mx-auto max-w-2xl space-y-10 px-5 py-12">
-      {report.needs_human_review ? (
-        <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Una o más dimensiones (o eslabones PAI) difieren entre corridas
-          independientes — marcado para revisión humana antes de entrega final.
-        </p>
-      ) : null}
-
       <p className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-neutral-300">
         Tu diagnóstico también llegará por correo. Puede tardar hasta 5 minutos;
         si no lo ves, revisa spam o promociones.
@@ -88,11 +85,6 @@ export function ReportView({
               <div className="flex items-center gap-3">
                 <SemaphoreDot color={d.color} />
                 <span className="text-sm">{d.label}</span>
-                {d.needs_human_review ? (
-                  <span className="text-[10px] uppercase text-amber-400">
-                    revisión
-                  </span>
-                ) : null}
               </div>
               <span
                 className={`text-sm font-semibold tabular-nums ${COLOR_TEXT[d.color]}`}
@@ -209,27 +201,31 @@ export function ReportView({
         </p>
       </section>
 
-      {/* 8. CTA único */}
+      {/* 8. CTA único — agendar (sin CTAs competidores) */}
       <section className="rounded-3xl border border-endor-accent/40 bg-endor-accent/10 p-8 text-center">
-        <p className="text-xl font-semibold text-endor-accent">
+        <p className="text-xs uppercase tracking-[0.2em] text-endor-accent/80">
+          Siguiente paso
+        </p>
+        <p className="mt-3 text-xl font-semibold text-endor-accent sm:text-2xl">
           {report.cta.phrase}
         </p>
-        <p className="mt-3 text-sm text-neutral-400">
-          Un solo siguiente paso: agenda una llamada de 20 minutos.
+        <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-neutral-300">
+          Este diagnóstico ya te dice dónde se te están yendo clientes. En 20
+          minutos te ayudamos a priorizar qué atacar primero — sin pitch de
+          paquete, solo claridad.
         </p>
         <a
-          href={
-            process.env.NEXT_PUBLIC_BOOKING_URL ||
-            "https://calendar.app.google/P3Pi2TQHQ8cSgr6N7"
-          }
+          href={BOOKING_URL}
           target="_blank"
           rel="noreferrer"
-          className="mt-6 inline-flex rounded-full bg-endor-accent px-6 py-3 text-sm font-semibold text-endor-black"
+          className="mt-6 inline-flex rounded-full bg-endor-accent px-8 py-3.5 text-sm font-semibold uppercase tracking-wide text-endor-black shadow-lg shadow-endor-accent/20 transition hover:brightness-110"
         >
-          Agendar llamada de 20 min
+          Agenda tu llamada de 20 min
         </a>
+        <p className="mt-4 text-xs text-neutral-500">
+          Cupo limitado · Sin compromiso · Equipo Ēndor
+        </p>
       </section>
-
     </article>
   );
 }
