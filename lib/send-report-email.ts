@@ -2,12 +2,13 @@
  * Envío del reporte de diagnóstico al cliente.
  *
  * Preferencia (steering):
- * 1) COMPOSIO_API_KEY → GMAIL_SEND_EMAIL vía Composio Actions API
- *    connected_account_id: gmail_moosa-torve (herramientas@grupoendor.com)
+ * 1) COMPOSIO_API_KEY → GMAIL_SEND_EMAIL vía Composio Actions/Tools API
+ *    connected_account_id: gmail_bizet-strid (herramientas@grupoendor.com)
  * 2) RESEND_API_KEY → Resend (fallback; from EMAIL_FROM o onboarding@resend.dev)
  * 3) Sin claves → email_sent: false + email_skip_reason (no falla el analyze)
  *
  * Solo se llama cuando status === "ready" (no cuando needs_review).
+ * PDF one-pager: link en el HTML; no bloquear email si PDF falla.
  */
 
 import type { DiagnosisIntake, DiagnosisReport, SemaphoreColor } from "@/types/diagnosis";
@@ -18,7 +19,7 @@ const DEFAULT_BOOKING =
 const DEFAULT_APP_URL = "https://endor-diagnostico.vercel.app";
 const HERRAMIENTAS_FROM = "herramientas@grupoendor.com";
 /** Composio connected account for herramientas@grupoendor.com */
-export const COMPOSIO_GMAIL_ACCOUNT_ID = "gmail_moosa-torve";
+export const COMPOSIO_GMAIL_ACCOUNT_ID = "gmail_bizet-strid";
 
 export type EmailSendResult = {
   email_sent: boolean;
@@ -57,6 +58,7 @@ export function buildReportEmailHtml(params: {
     process.env.NEXT_PUBLIC_APP_URL?.trim() || DEFAULT_APP_URL
   ).replace(/\/$/, "");
   const reportUrl = `${appUrl}/reporte/${diagnosisId}`;
+  const pdfUrl = `${appUrl}/api/reporte/${diagnosisId}/pdf`;
 
   const dimRows = report.dimensions
     .map((d) => {
@@ -116,6 +118,12 @@ export function buildReportEmailHtml(params: {
     <p style="margin:0;opacity:0.9;font-size:14px;">${escapeHtml(SEMAPHORE_LABELS[report.global_color])}</p>
   </td></tr>
 
+  <tr><td style="padding:20px 32px;background:#fffbeb;border-bottom:1px solid #fde68a;" align="center">
+    <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:#92400e;">Descarga tu one-pager en PDF</p>
+    <a href="${escapeHtml(pdfUrl)}" style="display:inline-block;background:#111827;color:#fbbf24;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px;font-size:14px;">Descargar PDF · one-pager</a>
+    <p style="margin:10px 0 0;font-size:11px;color:#a16207;word-break:break-all;">${escapeHtml(pdfUrl)}</p>
+  </td></tr>
+
   <tr><td style="padding:28px 32px;">
     <p style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#737373;">Veredicto</p>
     <p style="margin:0;font-size:18px;font-weight:600;">${escapeHtml(report.verdict)}</p>
@@ -149,7 +157,8 @@ export function buildReportEmailHtml(params: {
   <tr><td style="padding:0 32px 32px;" align="center">
     <p style="margin:0 0 12px;font-size:18px;font-weight:700;color:#b45309;">${escapeHtml(report.cta.phrase)}</p>
     <a href="${escapeHtml(booking)}" style="display:inline-block;background:#f59e0b;color:#111;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px;font-size:14px;">Agendar llamada de 20 min</a>
-    <p style="margin:16px 0 0;font-size:13px;"><a href="${escapeHtml(reportUrl)}" style="color:#2563eb;">Ver reporte completo</a></p>
+    <p style="margin:16px 0 0;font-size:13px;"><a href="${escapeHtml(reportUrl)}" style="color:#2563eb;">Ver reporte completo</a>
+      · <a href="${escapeHtml(pdfUrl)}" style="color:#2563eb;">Descargar PDF</a></p>
   </td></tr>
 
   <tr><td style="padding:16px 32px;background:#fafafa;border-top:1px solid #e4e4e7;font-size:11px;color:#737373;">
@@ -166,6 +175,76 @@ export function buildReportEmailHtml(params: {
   };
 }
 
+function resolveAccountId(): string {
+  return (
+    process.env.COMPOSIO_GMAIL_ACCOUNT_ID?.trim() ||
+    process.env.COMPOSIO_CONNECTED_ACCOUNT_ID?.trim() ||
+    COMPOSIO_GMAIL_ACCOUNT_ID
+  );
+}
+
+type ComposioAttempt = {
+  label: string;
+  url: string;
+  body: Record<string, unknown>;
+};
+
+async function tryComposioExecute(
+  apiKey: string,
+  attempt: ComposioAttempt
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(attempt.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify(attempt.body),
+    });
+    const text = await res.text().catch(() => "");
+    let data: {
+      successful?: boolean;
+      error?: string;
+      data?: { error?: string; successful?: boolean };
+      message?: string;
+    } = {};
+    try {
+      data = text ? (JSON.parse(text) as typeof data) : {};
+    } catch {
+      /* non-JSON */
+    }
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `${attempt.label} HTTP ${res.status}: ${text.slice(0, 300)}`,
+      };
+    }
+    if (
+      data.successful === false ||
+      data.error ||
+      data.data?.error ||
+      data.data?.successful === false
+    ) {
+      return {
+        ok: false,
+        error: `${attempt.label}: ${String(
+          data.error || data.data?.error || data.message || "send failed"
+        ).slice(0, 300)}`,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: `${attempt.label} exception: ${
+        err instanceof Error ? err.message : String(err)
+      }`.slice(0, 300),
+    };
+  }
+}
+
 async function sendViaComposio(params: {
   to: string;
   subject: string;
@@ -179,60 +258,62 @@ async function sendViaComposio(params: {
     };
   }
 
-  const accountId =
-    process.env.COMPOSIO_GMAIL_ACCOUNT_ID?.trim() ||
-    process.env.COMPOSIO_CONNECTED_ACCOUNT_ID?.trim() ||
-    COMPOSIO_GMAIL_ACCOUNT_ID;
-
-  // Composio Actions API v2
-  const url = `https://backend.composio.dev/api/v2/actions/GMAIL_SEND_EMAIL/execute`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      connectedAccountId: accountId,
-      input: {
-        recipient_email: params.to,
-        subject: params.subject,
-        body: params.html,
-        is_html: true,
-        user_id: "me",
-        from_email: HERRAMIENTAS_FROM,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    return {
-      email_sent: false,
-      email_error: `Composio Gmail HTTP ${res.status}: ${text.slice(0, 200)}`,
-      provider: "composio_gmail",
-    };
-  }
-
-  const data = (await res.json().catch(() => ({}))) as {
-    successful?: boolean;
-    error?: string;
-    data?: { error?: string };
+  const accountId = resolveAccountId();
+  const gmailArgs = {
+    recipient_email: params.to,
+    subject: params.subject,
+    body: params.html,
+    is_html: true,
+    user_id: "me",
+    from_email: HERRAMIENTAS_FROM,
   };
-  if (data.successful === false || data.error || data.data?.error) {
-    return {
-      email_sent: false,
-      email_error: String(
-        data.error || data.data?.error || "Composio Gmail send failed"
-      ),
-      provider: "composio_gmail",
-    };
+
+  const attempts: ComposioAttempt[] = [
+    {
+      label: "v2/actions",
+      url: "https://backend.composio.dev/api/v2/actions/GMAIL_SEND_EMAIL/execute",
+      body: {
+        connectedAccountId: accountId,
+        input: gmailArgs,
+      },
+    },
+    {
+      label: "v3/tools",
+      url: "https://backend.composio.dev/api/v3/tools/execute/GMAIL_SEND_EMAIL",
+      body: {
+        connected_account_id: accountId,
+        arguments: gmailArgs,
+        version: "latest",
+      },
+    },
+    {
+      label: "v3.1/tools",
+      url: "https://backend.composio.dev/api/v3.1/tools/execute/GMAIL_SEND_EMAIL",
+      body: {
+        connected_account_id: accountId,
+        arguments: gmailArgs,
+      },
+    },
+  ];
+
+  const errors: string[] = [];
+  for (const attempt of attempts) {
+    const result = await tryComposioExecute(apiKey, attempt);
+    if (result.ok) {
+      return {
+        email_sent: true,
+        provider: "composio_gmail",
+        email_sent_at: new Date().toISOString(),
+      };
+    }
+    errors.push(result.error);
+    console.warn("Composio Gmail attempt failed:", result.error);
   }
 
   return {
-    email_sent: true,
+    email_sent: false,
+    email_error: errors.join(" | ").slice(0, 800),
     provider: "composio_gmail",
-    email_sent_at: new Date().toISOString(),
   };
 }
 
@@ -308,6 +389,6 @@ export async function sendReportEmail(params: {
   return {
     email_sent: false,
     email_skip_reason:
-      "No email provider configured. Set COMPOSIO_API_KEY (preferred: Gmail herramientas@grupoendor.com via gmail_moosa-torve) or RESEND_API_KEY on Vercel.",
+      "No email provider configured. Set COMPOSIO_API_KEY (preferred: Gmail herramientas@grupoendor.com via gmail_bizet-strid) or RESEND_API_KEY on Vercel.",
   };
 }
