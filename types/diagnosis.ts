@@ -104,11 +104,19 @@ export interface IntentionInput {
   distinct: string;
 }
 
+export interface MaterialImageInput {
+  filename: string;
+  /** Cap ~200k chars; truncated server-side if oversized */
+  data_url?: string;
+}
+
 export interface IdentityInput {
   logo_filename?: string;
   logo_data_url?: string; // solo para demo; en prod va a storage
   colors: string;
   fonts: string;
+  /** Referencias de materiales (empaque, uniforme, etc.) — máx. 5 */
+  materials?: MaterialImageInput[];
 }
 
 export interface DigitalPresenceInput {
@@ -122,7 +130,7 @@ export interface DigitalPresenceInput {
 export interface ScopeInput {
   sector: string;
   city: string;
-  reach: "local" | "nacional" | "exportacion";
+  reach: "local" | "nacional" | "exportacion" | "internacional";
 }
 
 export interface OptionalEvidence {
@@ -159,6 +167,11 @@ export interface DiagnosisRow {
   needs_human_review: boolean;
   sector: string;
   city: string;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  company_name?: string | null;
+  reach?: string | null;
   email_sent_at?: string | null;
 }
 
