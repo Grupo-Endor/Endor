@@ -247,7 +247,8 @@ export function DiagnosticForm() {
         </h3>
         <p className="mt-4 max-w-lg text-muted-foreground">
           {values.nombre.split(" ")[0]}, corremos dos evaluaciones independientes de {values.empresa} y las
-          comparamos contra tu competencia. Recibirás tu reporte en {values.correo}.
+          comparamos contra tu competencia. También te enviamos el reporte a {values.correo}: puede tardar
+          hasta 5 minutos; si no lo ves, revisa spam o promociones.
         </p>
       </div>
     );

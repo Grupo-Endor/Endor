@@ -19,7 +19,7 @@ const DEFAULT_BOOKING =
 const DEFAULT_APP_URL = "https://endor-diagnostico.vercel.app";
 const HERRAMIENTAS_FROM = "herramientas@grupoendor.com";
 /** Composio connected account for herramientas@grupoendor.com */
-export const COMPOSIO_GMAIL_ACCOUNT_I45, "gmail_bizet-strid";
+export const COMPOSIO_GMAIL_ACCOUNT_ID = "gmail_bizet-strid";
 
 export type EmailSendResult = {
   email_sent: boolean;
@@ -177,9 +177,9 @@ export function buildReportEmailHtml(params: {
 
 function resolveAccountId(): string {
   return (
-    process.env.COMPOSIO_GMAIL_ACCOUNT_I4?.trim() ||
-    process.env.COMPOSIO_CONNECTED_ACCOUNT_I4?.trim() ||
-    COMPOSIO_GMAIL_ACCOUNT_I4
+    process.env.COMPOSIO_GMAIL_ACCOUNT_ID?.trim() ||
+    process.env.COMPOSIO_CONNECTED_ACCOUNT_ID?.trim() ||
+    COMPOSIO_GMAIL_ACCOUNT_ID
   );
 }
 
@@ -352,37 +352,40 @@ async function sendViaResend(params: {
 
   return {
     email_sent: true,
-    t {
-        con
-    } b: string):     acuando n            . NF dellanzareturn    v   o cuanconsolorte.
-  | OPENROUTER_API_KEY) csect: ace(/"/g,,
-  });
+    provider: "resend",
+    email_sent_at: new Date().toISOString(),
+  };
 }
 
-export async function buildReportPdf(params: {
+/**
+ * Envía el HTML del reporte. Nunca lanza: errores van en el resultado.
+ */
+export async function sendReportEmail(params: {
   intake: DiagnosisIntake;
-  report: Diagn  subject: string;
-  html: {></tgify({
- ,lHex =}f buildDplace(/"/g, "&quot;");onst apiKeto dateto    msg.inc@")ocess.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
+  report: DiagnosisReport;
+  diagnosisId: string;
+}): Promise<EmailSendResult> {
+  const { to, subject, html } = buildReportEmailHtml(params);
+  if (!to || !to.includes("@")) {
     return {
-    ke.contact.company || "tufalse,
-  oror:vali ${text.slice(0, 2nt: OpePromise<EmailSendResult> {
-  conshtml: params, model, 
-dFallbac| "tu] rors.joiected__FROM   o}L",
-    =l_senY missing",
-   }${escap  const text }`.slice(0, 300){></tgify({
- ,lHex =}: 10,
-   nt: OpePromise<EmailSendResult> {
-  coocess.env.RESENider: "composi{></tgify({
- ,lHex =}: 10,
- sio Gmail attempt failed:", result.error);
-   return {
-  ers: {
- No
- * PDFOpenAI; mt runB: Ll. Setal cliente.
- *
- * (
-    )OLOR_push(rendor.com";
-/** Composio construm */
-export const) oro  email_sent: f) cV DEFAU").slice(0                                               
+      email_sent: false,
+      email_skip_reason: "intake.contact.work_email missing or invalid",
+    };
+  }
+
+  if (process.env.COMPOSIO_API_KEY?.trim()) {
+    console.info(
+      `[email] composio gmail → ${to} account=${resolveAccountId()}`
+    );
+    return sendViaComposio({ to, subject, html });
+  }
+  if (process.env.RESEND_API_KEY?.trim()) {
+    return sendViaResend({ to, subject, html });
+  }
+
+  return {
+    email_sent: false,
+    email_skip_reason:
+      "No email provider configured. Set COMPOSIO_API_KEY (preferred: Gmail herramientas@grupoendor.com via gmail_bizet-strid) or RESEND_API_KEY on Vercel.",
+  };
+}
