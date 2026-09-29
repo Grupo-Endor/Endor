@@ -1,0 +1,520 @@
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+Manual de análisis de marcas — plataforma
+de diagnóstico Ēndor
+  ​Sep 28, 2026        · ​@Patricia Fernández Ibarra
+
+
+Principio rector: diagnosticar, no recetar
+La plataforma le dice a la persona qué le duele y qué tan grave es, comparado con su
+rubro. Nunca le dice cómo curarlo. El diagnóstico se regala; el tratamiento es el servicio de
+Ēndor.
+
+Es la versión pública del paso ANALYZE de la metodología. El paso DEFINE (propósito,
+palabra clave, arquetipos, concepto) no se toca aquí; es lo que se vende. La regla operativa
+es: la plataforma puede nombrar un problema, mostrar evidencia y ubicarlo contra la
+competencia. No puede proponer una solución, un nombre, un tono, una paleta ni un
+mensaje.
+
+Lo que sí hace:
+
+     Evalúa lo que la marca ya tiene (no lo que dice que quiere ser)
+     Detecta el patrón del sector (lo que todos los competidores hacen igual) y ubica a la
+     marca dentro o fuera de ese patrón
+     Entrega un puntaje por dimensión con semáforo y un ranking contra 3 a 5
+     competidores
+     Deja claro cuánto dinero o atención se está perdiendo por cada foco rojo, sin decir
+     cómo recuperarlo
+
+Lo que no hace:
+
+     Recomendar acciones concretas ("cambia tu logo a X", "usa este tono")
+     Generar contenido, nombres, conceptos o piezas
+     Dar el Brand DNA Brief ni ninguna parte de DEFINE
+
+Caso de referencia para calibrar el tono del diagnóstico: Liquid Death. Un análisis
+superficial diría "agua con códigos de cerveza, incoherente". El diagnóstico correcto dice:
+"toma códigos de otra categoría a propósito; eso es una decisión, no un error". La
+plataforma tiene que distinguir un error de una apuesta deliberada, y para eso necesita la
+sección de intención del intake (sección 2).
+
+
+
+
+                                                                                      Page 1 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+Intake: qué sube el usuario
+El intake pide evidencia, no opiniones. La versión mínima toma 5 minutos y produce un
+diagnóstico útil; cada dato extra afina el puntaje.
+
+
+  Bloque                         Qué se pide                     Obligatorio   Para qué sirve
+
+  Identidad                      Logo en PNG/SVG, colores,       Sí            Dimensión 1
+                                 tipografía (o captura de
+                                 donde se ven)
+
+  Presencia                      URL del sitio, handles de       Sí (mínimo    Dimensiones 2, 3 y 5
+  digital                        Instagram, Facebook,            uno)
+                                 TikTok, LinkedIn
+
+  Rubro y zona                   Giro (lista cerrada), ciudad,   Sí            Elegir competidores y
+                                 alcance (local, nacional,                     benchmark
+                                 exportación)
+
+  Competencia                    3 nombres o URLs de quien       Sí            Sección 4
+                                 le quita clientes
+
+  Intención                      3 preguntas: ¿qué quieres       Sí            Separar error de apuesta
+                                 que sienta la gente al                        deliberada
+                                 verte?, ¿a quién NO le
+                                 vendes?, ¿qué haces
+                                 distinto que nadie copia?
+
+  Piezas                         3 a 5 publicaciones o           No            Dimensión 3 con más
+  recientes                      anuncios de los últimos 60                    evidencia
+                                 días
+
+  Materiales                     Fotos de empaque,               No            Dimensión 4
+  físicos                        sucursal, uniforme,
+                                 vehículo
+
+  Palabras del                   3 frases con las que            No            Comparar autopercepción
+  cliente                        describe su negocio                           vs. lo que comunica
+
+
+Reglas del intake:
+
+ 1. El giro se elige de una lista cerrada de unos 40 rubros. Sin eso no hay benchmark, y el
+     benchmark es la mitad del valor del diagnóstico.
+ 2. Si el usuario no pone competidores, la plataforma los propone a partir del giro y la
+     ciudad, y el usuario confirma. Nunca se analiza contra competidores que el usuario no
+     reconoce como tales.
+
+
+
+
+                                                                                                       Page 2 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+ 3. Las tres preguntas de intención se guardan literales. Son las citas que después usa el
+     reporte ("tú dijiste que querías X; hoy comunicas Y").
+ 4. Todo lo que no se sube se marca como sin evidencia, no se infiere ni se penaliza. Se
+     reporta como "no evaluado", que también es una señal para la venta.
+
+
+Las 6 dimensiones de análisis
+Cada dimensión se califica de 0 a 100 con 4 o 5 criterios verificables. "Verificable" significa
+que dos analistas (o dos corridas del modelo) llegan al mismo resultado viendo la misma
+evidencia. Si un criterio depende de gusto, no entra.
+
+
+1. Identidad visual (peso 20%)
+     Legibilidad del logo a 32 px y en una sola tinta
+     Consistencia de color y tipografía entre sitio, redes y piezas subidas (se cuenta
+     cuántas paletas distintas aparecen)
+     Si el logo se distingue de los 3 competidores puestos en fila sin nombre
+     Si el sistema visual cae en el patrón del sector (por ejemplo, verde y hoja en todo lo
+     "natural", azul y círculo en toda fintech)
+
+
+2. Claridad de propuesta (peso 20%)
+     En el sitio o la bio, ¿se entiende en 5 segundos qué vende, a quién y por qué a ellos?
+     ¿Hay una frase que ningún competidor podría firmar tal cual? Se prueba pegando la
+     frase en el sitio del competidor: si no chirría, no diferencia
+     Coherencia entre lo que el cliente dijo en intención y lo que el material comunica
+     Palabras genéricas detectadas: calidad, innovación, compromiso, mejor servicio. Se
+     cuentan
+
+
+3. Voz y contenido (peso 15%)
+     Consistencia de tono entre publicaciones (mismo "quién habla" o cambia de cuenta en
+     cuenta)
+     Proporción de contenido que vende vs. contenido que aporta o entretiene
+     Frecuencia real de publicación en los últimos 60 días contra la mediana del rubro
+     Interacción por publicación normalizada por seguidores, contra la mediana de los
+     competidores
+
+
+
+
+                                                                                          Page 3 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+4. Coherencia en puntos de contacto (peso 15%)
+     ¿La marca se ve igual en sitio, redes, empaque y sucursal? Se cuenta el número de
+     "marcas distintas" que aparecen
+     Estado de lo físico si se subió: empaque, uniforme, señalética, vehículo
+     Si no hay evidencia física, se marca no evaluado y se reporta como punto ciego
+
+
+5. Presencia y encontrabilidad (peso 15%)
+     Aparece o no en la primera página al buscar su categoría más su ciudad
+     Ficha de Google Business completa, con reseñas recientes y respondidas
+     Si una IA (ChatGPT, Gemini, Perplexity) la menciona al preguntar por su categoría en su
+     zona. Esto conecta directo con el servicio SEO/GEO de Ēndor
+     Tiempo de carga y funcionamiento en celular del sitio
+
+
+6. Diferenciación real (peso 15%)
+     Es la dimensión que resume todo: quitando el logo y el nombre, ¿se puede saber de
+     quién es cada pieza?
+     Cuántos de los 5 elementos de la marca (color, forma, tono, promesa, oferta) coinciden
+     con el patrón del sector
+     Si la apuesta que el cliente declaró en intención se ve en el material, o solo existe en su
+     cabeza
+
+Los pesos son punto de partida; se ajustan por rubro. En restaurantes, puntos de contacto
+y encontrabilidad pesan más; en B2B, claridad de propuesta pesa más que identidad
+visual.
+
+
+Lectura PAI: ¿la marca tiene concepto?
+Esta es la parte que ChatGPT no puede dar. Cualquier IA te dice que tu logo es genérico o
+tu bio es confusa. Solo esta plataforma reconstruye la cadena Producto → Atributo → Idea
+→ Concepto a partir de lo que la marca ya publica, y muestra en qué eslabón se rompe.
+
+La lectura no califica con número. Da un estado por eslabón, y ese estado es lo que se
+muestra al usuario:
+
+
+
+
+                                                                                          Page 4 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+  Eslabón               Qué busca la                        Claro            Difuso                Ausente
+                        plataforma en el
+                        material
+
+  Producto              Se entiende qué                     Una oferta, un   Varias ofertas sin    No se sabe qué
+                        vende y a quién,                    público          jerarquía             vende
+                        sin leer dos veces
+
+  Atributo              Un rasgo del                        Uno              Tres o más            Ninguno
+                        producto que el                     dominante,       compitiendo, o solo   reconocible
+                        material repite y                   con evidencia    palabras genéricas
+                        demuestra (no que
+                        declara)
+
+  Idea                  El atributo se                      El material      Habla del producto    Habla del
+                        convierte en algo                   habla del        todo el tiempo        dueño
+                        que le importa al                   cliente
+                        cliente, no al
+                        dueño
+
+  Concepto              Una sola idea que                   Todo apunta a    Hay concepto en       Cada pieza es
+                        amarra logo, tono,                  lo mismo         una pieza y en otra   una marca
+                        contenido y oferta;                                  no                    distinta
+                        se puede resumir
+                        en una frase que
+                        nadie más firmaría
+
+
+Cómo se muestra:
+
+ 1. Una tira de 4 eslabones con su estado en color. Casi todas las marcas que llegan van a
+     estar claras en Producto, difusas en Atributo y ausentes de Idea en adelante. Ese
+     dibujo es el diagnóstico.
+ 2. Una oración de lectura: "Tu marca se detiene en Atributo. Dices que eres artesanal,
+     pero nunca lo convertiste en algo que tu cliente quiera."
+ 3. La cita del intake al lado: lo que el usuario dijo que quería que sintiera la gente, contra lo
+     que la cadena muestra. Ahí se ve la distancia entre intención y marca.
+
+Lo que no se muestra: cuál sería el atributo correcto, la idea ni el concepto. Se nombra el
+eslabón roto, nunca cómo soldarlo. Eso es exactamente el PAI Concept como servicio.
+
+En el reporte, la tira PAI va justo después del semáforo de dimensiones y antes de los 3
+hallazgos. Cuando Concepto está ausente, el veredicto de la primera línea sale de aquí y
+no de la dimensión 6, y el gancho apunta directo a Brand DNA Brief + concepto creativo.
+
+
+
+
+                                                                                                               Page 5 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+Para calibrar el modelo: se corren primero las marcas que Ēndor ya trabajó, con su Brand
+DNA Brief y concepto como respuesta correcta. Si la plataforma no ubica el eslabón roto
+donde el equipo lo ubicó, se ajusta antes de abrirla a nadie. Ese archivo de casos es la
+ventaja que ninguna IA genérica tiene.
+
+
+Comparativa contra la competencia
+El benchmark se arma con 3 a 5 competidores que el usuario confirmó, corridos por las
+mismas 6 dimensiones con la misma evidencia pública. La marca del usuario se posiciona
+en cada dimensión: arriba, en la mediana o abajo. Nunca se muestra el puntaje exacto del
+competidor, solo la posición relativa.
+
+El paso más valioso es el patrón del sector, tomado directo de la metodología del Brand
+DNA Brief: lo que todos hacen igual. Se detecta así:
+
+ 1. Se ponen los logos de los 5 competidores más el del usuario en una fila. Se cuentan
+     colores dominantes, formas, estilos tipográficos.
+ 2. Se extraen las frases de bio o headline de cada uno. Se marcan las palabras que se
+     repiten en 3 o más.
+ 3. Se clasifica el tono de los últimos 10 posts de cada uno en 4 categorías: institucional,
+     cercano, aspiracional, promocional.
+ 4. Lo que aparece en 3 o más competidores es el patrón. Si el usuario cae dentro del
+    patrón en 3 o más elementos, se reporta como "marca de categoría": el cliente compra
+     la categoría, no a él.
+
+Lo que sí ve el usuario:
+
+     Su posición por dimensión (arriba, mediana, abajo) sin cifras del competidor
+     El patrón del sector descrito en una oración ("en tu rubro todos usan verde, hoja y la
+     palabra natural")
+     Cuántos elementos suyos coinciden con el patrón
+     Quién del grupo es el que más se sale del patrón, nombrado, porque esa es la amenaza
+     real
+
+Lo que no ve:
+
+     Los puntajes desglosados de los competidores
+     Por dónde podría salirse del patrón (eso es concepto creativo, es DEFINE)
+     Cualquier análisis de competidores que no haya confirmado en el intake
+
+Cuando el rubro no está en la lista cerrada o los competidores no tienen presencia pública
+suficiente, la comparativa se marca como parcial y el reporte lo dice. Un benchmark
+inventado es peor que ninguno.
+
+
+
+                                                                                        Page 6 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+Puntuación y semáforo
+Cada dimensión da un número de 0 a 100 y un color. El puntaje global es el promedio
+ponderado. Se muestra el global grande, las 6 dimensiones con color, y nada más
+numérico.
+
+
+  Rango             Color              Qué significa para el usuario           Qué significa para Ēndor
+
+  0 a 39            Rojo               Está perdiendo clientes por esto        Lead caliente; el dolor ya es
+                                       hoy                                     visible
+
+  40 a 79           Amarillo           Funciona pero no diferencia             Lead tibio; vende con el
+                                                                               benchmark
+
+  80 a              Verde              Es una fortaleza; cuidarla              Se reconoce, no se vende ahí
+  100
+
+
+Reglas de calibración:
+
+ 1. Ningún criterio se califica por gusto. Si el modelo no puede citar la evidencia (captura,
+     frase, conteo), el criterio se deja en no evaluado y no entra al promedio.
+ 2. Un verde no se regala. El 70 se cruza solo cuando la marca supera la mediana del rubro
+     en esa dimensión. Ser "bien" en un rubro donde todos están bien es amarillo.
+ 3. El puntaje global nunca sube de 60 si Diferenciación real está en rojo. Una marca
+     coherente e invisible sigue siendo invisible.
+ 4. Se corren dos evaluaciones independientes por marca y se promedian. Si difieren en
+     más de 15 puntos en una dimensión, esa dimensión se marca para revisión humana
+     antes de entregar. Esto es lo que hace que la plataforma sea confiable y no una moneda
+     al aire.
+ 5. Se guarda el puntaje con fecha. Si la misma marca vuelve en 3 meses, se le muestra la
+     diferencia. Eso da razón para regresar.
+
+
+Regla de profundidad: qué se muestra y qué se reserva
+La línea es esta: el usuario sale sabiendo exactamente qué está mal y cuánto le cuesta,
+pero sin poder arreglarlo solo con lo que leyó. Si con el reporte en mano puede resolverlo
+con un freelancer el fin de semana, se dio de más.
+
+
+  Se muestra (gratis)                                               Se reserva (servicio)
+
+  Qué está mal, con evidencia (captura,                             Cómo debería estar
+  conteo, cita)
+
+
+
+
+                                                                                                               Page 7 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+  Se muestra (gratis)                                            Se reserva (servicio)
+
+  Que cae en el patrón del sector y en qué                       Por dónde salirse del patrón
+  elementos
+
+  Que su propuesta no la firma nadie más, o                      La propuesta correcta, el propósito, la
+  que la firma cualquiera                                        palabra clave
+
+  Que el tono cambia de post en post                             Cuál es el tono, los rasgos de personalidad,
+                                                                 el arquetipo
+
+  Que hay 3 versiones de su marca entre sitio,                   El sistema que las unifica
+  redes y local
+
+  Que no aparece cuando la IA responde por                       La estrategia SEO/GEO
+  su categoría
+
+  Cuánto le cuesta cada rojo, en orden de                        El plan y su prioridad
+  magnitud ("pierdes la primera impresión en
+  el 80% de tus contactos")
+
+  Su posición contra competidores                                El puntaje detallado de cada competidor
+
+
+Cómo se redacta cada hallazgo para quedarse del lado correcto de la línea:
+
+ 1. Hecho observable: "En tus últimos 20 posts aparecen 4 paletas de color distintas."
+ 2. Comparación: "Tus 3 competidores usan una o dos."
+ 3. Consecuencia: "Cada vez que alguien te ve, tiene que volver a aprender quién eres."
+ 4. Cierre abierto: "Esto se resuelve con un sistema de identidad, no con un ajuste de logo."
+     Nombra la categoría de solución sin describirla.
+
+Lo que nunca aparece en un hallazgo: un adjetivo sin evidencia ("tu logo se ve anticuado"),
+una instrucción ("cambia a tipografía sans"), una referencia visual concreta ("mira lo que
+hace X marca"), o un ejemplo de frase, nombre o concepto. Cada una de esas es una pieza
+del servicio regalada.
+
+Revisión antes de liberar el reporte: se lee cada hallazgo preguntando "¿con esto ya lo
+puede hacer solo?". Si la respuesta es sí, se recorta hasta que sea no.
+
+
+Estructura del reporte de salida
+El reporte cabe en una pantalla de celular por bloque y se lee completo en 4 minutos.
+Orden fijo:
+
+
+
+
+                                                                                                           Page 8 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+ 1. Veredicto en una oración. Ejemplo del formato: "Tu marca es sólida en lo visual pero
+     desaparece frente a tus competidores: eres una marca de categoría." Sale de la
+     dimensión 6 y del patrón del sector.
+ 2. Puntaje global grande, con el color, y la posición contra el grupo ("4 de 6 marcas
+     analizadas").
+ 3. Semáforo de 6 dimensiones. Solo nombre, número y color. Sin texto.
+ 4. Los 3 hallazgos que más pesan, redactados con la fórmula de la sección 6. Se eligen por
+    impacto en el puntaje global, no por facilidad de detección. Máximo 3; el cuarto en
+     adelante se guarda para la llamada.
+ 5. Lo que ya funciona. Un párrafo. Nombra lo verde para que el usuario confíe en que el
+     rojo también es cierto.
+ 6. Patrón del sector en una oración y cuántos elementos suyos caen dentro.
+ 7. Punto ciego: lo que no se evaluó por falta de evidencia ("no subiste material físico; en tu
+     rubro el local pesa").
+ 8. Gancho de conversión (sección 8).
+
+Cada hallazgo trae su evidencia visible: la captura, el conteo o la cita del intake. Sin
+evidencia no hay hallazgo.
+
+Se entrega en pantalla y como PDF de una página, con estilo Ēndor (Mulish y Playfair
+Display), para que el usuario lo reenvíe a su socio o a su jefe. Ese reenvío es el canal de
+referidos.
+
+
+Ganchos de conversión hacia Ēndor
+El gancho se elige por el perfil de rojos, no es un botón genérico. Cada combinación de
+dimensiones en rojo apunta a un servicio distinto, y el reporte lo dice en una línea.
+
+
+
+
+                                                                                           Page 9 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+  Perfil de rojos                                       Servicio que se ofrece           Frase de cierre
+
+  Identidad + Puntos de                                 Rebranding                       "Tienes tres marcas.
+  contacto                                                                               Necesitas una."
+
+  Voz + Contenido                                       Plan de contenido y              "Publicas, pero no habla
+                                                        personalidad de marca            nadie."
+
+  Claridad + Diferenciación o                           Taller de marca de 2 a 3 horas   "Tu problema no es de
+  Todo amarillo, sin rojos                              + Brand DNA Brief y              diseño, es de definición.
+                                                        concepto creativo (PAI           Empieza por ahí."
+                                                        Concept)
+
+  Todo verde                                            Nada, se felicita                Referido: "¿conoces a
+                                                                                         alguien que necesite esto?"
+
+
+Mecánica del gancho:
+
+ 1. Un solo llamado a la acción por reporte. Dos opciones bajan la conversión.
+ 2. La acción es agendar una llamada de 20 minutos, no "contáctanos". En la llamada se
+     muestran los hallazgos 4 al 6 que se guardaron.
+ 3. El correo de seguimiento a los 3 días trae un hallazgo extra, uno solo, redactado igual
+    que los del reporte. A los 10 días, la comparativa contra el competidor que más se sale
+     del patrón.
+ 4. Cuando el rubro tiene 5 o más marcas analizadas, se le manda al usuario dónde queda
+     su puntaje contra el promedio de su rubro en la plataforma. Es el dato que más
+     comparten.
+ 5. Un porcentaje de los que hicieron el diagnóstico va a pedir el paquete completo
+     aunque estén en verde. Existe un precio para eso: el diagnóstico profundo con las 6
+     dimensiones desglosadas y competidores con cifras. Es un producto de entrada, no un
+     servicio de agencia.
+
+El puntaje global con fecha se usa después: a los 90 días se invita a volver a correr el
+diagnóstico. Si no contrató, el número no se movió, y eso es el mensaje.
+
+
+Lo que la plataforma nunca hace
+ 1. Calificar por gusto. Todo criterio tiene evidencia citable o no se evalúa.
+ 2. Inventar competidores o benchmarks. Si no hay datos públicos suficientes, la
+     comparativa se marca parcial.
+ 3. Dar un verde por cortesía. El verde se gana contra la mediana del rubro.
+
+
+
+
+                                                                                                                Page 10 of 11
+Manual de análisis de marcas — plataforma de diagnóstico Ēndor
+
+
+
+
+ 4. Regalar DEFINE. Ni propósito, ni palabra clave, ni arquetipo, ni concepto, ni nombres, ni
+     tono, ni referencias visuales.
+ 5. Recomendar acciones. Nombra la categoría de solución, nunca la solución.
+ 6. Mostrar más de 3 hallazgos. Los demás son material de la llamada.
+ 7. Confundir apuesta con error. Si el usuario declaró una intención y el material la refleja,
+     aunque se salga de lo esperado, se respeta.
+ 8. Guardar o reutilizar el material del usuario sin decirlo. Lo que sube es suyo; el puntaje
+     agregado por rubro es lo único que se comparte, sin nombres.
+ 9. Salir sin revisión humana cuando las dos corridas difieren en más de 15 puntos.
+10. Ofrecer dos llamados a la acción.
+
+
+
+
+                                                                                        Page 11 of 11
+
