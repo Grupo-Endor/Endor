@@ -3,11 +3,7 @@
  *
  * PRINCIPIO RECTOR (inyectado al system prompt):
  * Diagnosticar, NUNCA recetar.
- * - Sí: nombrar problema, evidencia, ubicación vs competencia/rubro, costo.
- * - No: soluciones, nombres, tonos, paletas, mensajes, Brand DNA, DEFINE
- *   (propósito, palabra clave, arquetipos, concepto).
- * - Distinguir error vs apuesta deliberada usando la sección de intención.
- * - Sin evidencia → not_evaluated (null), no inventar ni penalizar.
+ * Manual § Lectura PAI, benchmark relativo, profundidad.
  */
 
 import OpenAI from "openai";
@@ -17,8 +13,13 @@ import {
   type DiagnosisReport,
   type DimensionKey,
   type Finding,
+  type PaiChain,
 } from "@/types/diagnosis";
-import { buildDimensionScores } from "@/lib/scoring";
+import {
+  buildDimensionScores,
+  brokenPaiLink,
+  mergePaiChains,
+} from "@/lib/scoring";
 import { buildMockReport, buildReport, inferBlindSpot } from "@/lib/report";
 import { sectorLabel } from "@/lib/sectors";
 
@@ -36,7 +37,32 @@ PRINCIPIO RECTOR — DIAGNOSTICAR, NUNCA RECETAR:
 - Si falta evidencia para un criterio o dimensión, responde null (not_evaluated). No inventes. No penalices.
 - Ningún criterio por gusto: si no puedes citar evidencia (captura, frase, conteo), null.
 - Un verde no se regala: 80+ solo si supera la mediana del rubro en esa dimensión. Estar "bien" donde todos están bien = amarillo.
-- Responde SOLO JSON válido según el schema pedido. Idioma: español (México).`;
+- Responde SOLO JSON válido según el schema pedido. Idioma: español (México).
+
+LECTURA PAI (Producto → Atributo → Idea → Concepto) — sin número, solo estado:
+Tabla de estados (claro | difuso | ausente):
+- Producto: claro = una oferta/un público sin releer; difuso = varias ofertas sin jerarquía; ausente = no se sabe qué vende.
+- Atributo: claro = un rasgo dominante demostrado (no solo declarado); difuso = tres+ compitiendo o solo genéricos; ausente = ninguno reconocible.
+- Idea: claro = el material habla del cliente; difuso = habla del producto todo el tiempo; ausente = habla del dueño.
+- Concepto: claro = todo apunta a lo mismo (frase que nadie más firmaría); difuso = concepto en una pieza y en otra no; ausente = cada pieza es una marca distinta.
+Reglas PAI:
+- Nombra el eslabón roto; NUNCA propongas el atributo/idea/concepto correcto ni cómo soldarlo.
+- pai_reading: una oración que señala dónde se detiene la cadena.
+- intention_quote: cita literal de la intención del intake enfrentada a lo que la cadena muestra.
+- Si Concepto es ausente, el verdict sale del quiebre PAI + patrón del sector (no solo de dimensión 6).
+
+BENCHMARK / COMPETENCIA:
+- Solo posiciones relativas (arriba / mediana / abajo). NUNCA puntajes exactos de competidores.
+- Patrón del sector = lo que 3+ competidores hacen igual. Si el usuario cae en 3+ elementos → "marca de categoría".
+- No inventes competidores ni benchmarks; si falta evidencia pública, marca parcial.
+
+PROFUNDIDAD (línea del manual):
+- El usuario debe salir sabiendo exactamente qué está mal y cuánto le cuesta, pero SIN poder arreglarlo solo con lo que leyó.
+- Si con el reporte en mano podría resolverlo un freelancer el fin de semana, diste de más: recorta.
+
+HALLAZGOS (máx. 3, por impacto en global):
+Fórmula fija: fact (hecho observable) → compare (vs competencia/mediana) → cost (consecuencia/orden de magnitud) → category_closer (categoría abierta, nunca instrucción).
+Nunca: adjetivo sin evidencia, instrucción, referencia visual concreta, ejemplo de frase/nombre/concepto.`;
 
 const DIMENSION_KEYS = Object.keys(DIMENSION_META) as DimensionKey[];
 
@@ -48,6 +74,9 @@ interface LlmRunResult {
   sector_pattern: string;
   sector_pattern_matches: number;
   position_vs_group?: string;
+  pai: PaiChain;
+  pai_reading: string;
+  intention_quote: string;
 }
 
 function buildUserPrompt(intake: DiagnosisIntake, runLabel: string): string {
@@ -70,12 +99,20 @@ Devuelve JSON con esta forma exacta:
     "presencia_encontrabilidad": number|null,
     "diferenciacion_real": number|null
   },
-  "verdict": "una oración",
+  "pai": {
+    "producto": "claro|difuso|ausente",
+    "atributo": "claro|difuso|ausente",
+    "idea": "claro|difuso|ausente",
+    "concepto": "claro|difuso|ausente"
+  },
+  "pai_reading": "una oración que nombra el eslabón roto; nunca cómo soldarlo",
+  "intention_quote": "cita literal de intención del intake vs lo que la cadena muestra",
+  "verdict": "una oración (si concepto ausente: sale de PAI + patrón sector)",
   "findings": [
     {
       "dimension": "<DimensionKey>",
       "fact": "hecho observable",
-      "compare": "comparación",
+      "compare": "comparación relativa (sin scores de competidores)",
       "cost": "consecuencia / costo",
       "category_closer": "categoría de solución sin describirla",
       "evidence_note": "qué evidencia citas"
@@ -90,9 +127,24 @@ Devuelve JSON con esta forma exacta:
 Máximo 3 findings, ordenados por impacto en el global. Scores 0–100 o null.`;
 }
 
+function parsePai(raw: unknown): PaiChain {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const norm = (v: unknown) => {
+    const s = String(v ?? "").toLowerCase();
+    if (s === "claro" || s === "difuso" || s === "ausente") return s as PaiChain[keyof PaiChain];
+    return "ausente" as const;
+  };
+  return {
+    producto: norm(o.producto),
+    atributo: norm(o.atributo),
+    idea: norm(o.idea),
+    concepto: norm(o.concepto),
+  };
+}
+
 function parseRun(raw: string): LlmRunResult {
-  const cleaned = raw.replace(/^```json\\s*/i, "").replace(/```$/i, "").trim();
-  const data = JSON.parse(cleaned) as LlmRunResult;
+  const cleaned = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+  const data = JSON.parse(cleaned) as LlmRunResult & { pai?: unknown };
   const scores = {} as Record<DimensionKey, number | null>;
   for (const key of DIMENSION_KEYS) {
     const v = data.scores?.[key];
@@ -101,16 +153,29 @@ function parseRun(raw: string): LlmRunResult {
         ? null
         : Math.max(0, Math.min(100, Math.round(Number(v))));
   }
+  const findings = (Array.isArray(data.findings) ? data.findings.slice(0, 3) : []).map(
+    (f) => ({
+      dimension: f.dimension,
+      fact: String(f.fact ?? ""),
+      compare: String(f.compare ?? ""),
+      cost: String(f.cost ?? ""),
+      category_closer: String(f.category_closer ?? ""),
+      evidence_note: f.evidence_note ? String(f.evidence_note) : undefined,
+    })
+  );
   return {
     scores,
     verdict: String(data.verdict ?? ""),
-    findings: Array.isArray(data.findings) ? data.findings.slice(0, 3) : [],
+    findings,
     what_works: String(data.what_works ?? ""),
     sector_pattern: String(data.sector_pattern ?? ""),
     sector_pattern_matches: Number(data.sector_pattern_matches ?? 0),
     position_vs_group: data.position_vs_group
       ? String(data.position_vs_group)
       : undefined,
+    pai: parsePai(data.pai),
+    pai_reading: String(data.pai_reading ?? ""),
+    intention_quote: String(data.intention_quote ?? ""),
   };
 }
 
@@ -133,6 +198,10 @@ async function singleRun(
   return parseRun(content);
 }
 
+function preferText(a: string, b: string): string {
+  return a.trim() ? a : b;
+}
+
 /**
  * Dos corridas independientes → promedio de scores → reporte.
  * Sin OPENAI_API_KEY → mock estructurado.
@@ -147,7 +216,6 @@ export async function analyzeBrand(
 
   const client = new OpenAI({ apiKey });
 
-  // Dos corridas independientes (pueden paralelizarse)
   const [runA, runB] = await Promise.all([
     singleRun(client, intake, "A"),
     singleRun(client, intake, "B"),
@@ -161,31 +229,53 @@ export async function analyzeBrand(
   ) as Parameters<typeof buildDimensionScores>[0];
 
   const dimensions = buildDimensionScores(runs);
-
-  // Preferir textos de la corrida A; findings ya limitados a 3
-  const findings = (runA.findings.length ? runA.findings : runB.findings).map(
-    (f) => ({
-      ...f,
-      dimension: f.dimension,
-      fact: f.fact,
-      compare: f.compare,
-      cost: f.cost,
-      category_closer: f.category_closer,
-      evidence_note: f.evidence_note,
-    })
+  const { pai, needs_human_review: paiNeedsReview } = mergePaiChains(
+    runA.pai,
+    runB.pai
   );
+
+  const findings = (runA.findings.length ? runA.findings : runB.findings).slice(
+    0,
+    3
+  );
+
+  let verdict = preferText(runA.verdict, runB.verdict);
+  // Manual: cuando Concepto está ausente, el veredicto sale de PAI + patrón sector
+  if (pai.concepto === "ausente") {
+    const breakLink = brokenPaiLink(pai) ?? "concepto";
+    const pattern = preferText(runA.sector_pattern, runB.sector_pattern);
+    const paiReading = preferText(runA.pai_reading, runB.pai_reading);
+    if (paiReading) {
+      verdict = `${paiReading}${pattern ? ` ${pattern}` : ""}`.trim();
+    } else {
+      verdict = `Tu cadena PAI se rompe en ${breakLink}: hoy operas como marca de categoría.${
+        pattern ? ` ${pattern}` : ""
+      }`;
+    }
+  }
+
+  const intention_quote =
+    preferText(runA.intention_quote, runB.intention_quote) ||
+    `Tú dijiste que querías que la gente sintiera: «${(intake.intention.feel || "…").slice(0, 120)}». La cadena PAI muestra otra cosa.`;
 
   return buildReport({
     intake,
     dimensions,
     findings,
-    verdict: runA.verdict || runB.verdict,
-    what_works: runA.what_works || runB.what_works,
-    sector_pattern: runA.sector_pattern || runB.sector_pattern,
+    verdict,
+    what_works: preferText(runA.what_works, runB.what_works),
+    sector_pattern: preferText(runA.sector_pattern, runB.sector_pattern),
     sector_pattern_matches:
       runA.sector_pattern_matches || runB.sector_pattern_matches,
     blind_spot: inferBlindSpot(intake),
-    position_vs_group: runA.position_vs_group || runB.position_vs_group,
+    position_vs_group: preferText(
+      runA.position_vs_group ?? "",
+      runB.position_vs_group ?? ""
+    ) || undefined,
+    pai,
+    pai_reading: preferText(runA.pai_reading, runB.pai_reading),
+    intention_quote,
+    force_human_review: paiNeedsReview,
     mock: false,
   });
 }
