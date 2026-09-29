@@ -11,7 +11,6 @@ import { mockSave } from "@/lib/mock-store";
 import {
   assertReportEmailable,
   sendReportEmail,
-  sendSalesAlertEmail,
 } from "@/lib/send-report-email";
 import { isMockLikeReport } from "@/lib/report";
 import { randomUUID } from "crypto";
@@ -21,7 +20,9 @@ import { randomUUID } from "crypto";
  * Valida intake → guarda fila → 2 corridas LLM OpenAI/OpenRouter (o mock) → reporte JSON.
  * Entrega automática: status siempre "ready" cuando hay reporte (nunca needs_review
  * para gating de entrega). needs_human_review se guarda en DB/JSON solo como flag interno.
- * Email cliente + alert comercial (Patricia) ONLY when status === ready AND report is real.
+ * Email cliente ONLY when status === ready AND report is real.
+ * Sales alert to Patricia is NOT sent here — only when the lead books a call
+ * (see /api/cron/booking-alerts + lib/booking-alerts.ts).
  * Gates in this route AND in lib/send-report-email.ts (belt and suspenders).
  */
 export const maxDuration = 60;
@@ -130,29 +131,16 @@ export async function POST(req: Request) {
       diagnosisId: id,
     });
 
-    let sales_alert_sent = false;
-    let sales_alert_status:
-      | "sent"
-      | "skipped_mock"
-      | "skipped_not_ready"
-      | "skipped_invalid"
-      | "skipped_no_provider"
-      | "failed"
-      | undefined;
-    let sales_alert_error: string | undefined;
-    let sales_alert_skip_reason: string | undefined;
-
     if (!preGate.ok) {
       email_skip_reason = preGate.reason;
       email_status = preGate.email_status;
-      sales_alert_status = preGate.email_status;
-      sales_alert_skip_reason = preGate.reason;
       console.warn(
         `[email] SKIPPED at analyze gate (${email_status}) id=${id}: ${email_skip_reason}`
       );
     } else {
-      // Await sends before responding so the client sees email_sent outcome.
-      // sendReportEmail / sendSalesAlertEmail re-check the same gate (suspenders).
+      // Await send before responding so the client sees email_sent outcome.
+      // sendReportEmail re-checks the same gate (suspenders).
+      // Patricia is notified ONLY on calendar booking (/api/cron/booking-alerts).
       const emailResult = await sendReportEmail({
         intake,
         report,
@@ -172,24 +160,6 @@ export async function POST(req: Request) {
           emailResult.email_error || emailResult.email_skip_reason
         );
       }
-
-      const salesResult = await sendSalesAlertEmail({
-        intake,
-        report,
-        diagnosisId: id,
-        status,
-      });
-      sales_alert_sent = salesResult.email_sent;
-      sales_alert_status = salesResult.email_status;
-      sales_alert_error = salesResult.email_error;
-      sales_alert_skip_reason = salesResult.email_skip_reason;
-      if (!sales_alert_sent) {
-        console.error(
-          "[sales-alert] send failed/skipped:",
-          salesResult.email_status,
-          salesResult.email_error || salesResult.email_skip_reason
-        );
-      }
     }
 
     // Persist email outcome on the row (and inside report JSON).
@@ -203,10 +173,8 @@ export async function POST(req: Request) {
           email_error: email_error ?? null,
           email_skip_reason: email_skip_reason ?? null,
           email_status,
-          sales_alert_sent,
-          sales_alert_status: sales_alert_status ?? null,
-          sales_alert_error: sales_alert_error ?? null,
-          sales_alert_skip_reason: sales_alert_skip_reason ?? null,
+          // sales alert moved to booking cron (not on every diagnosis)
+          sales_alert_on_booking_only: true,
         };
         const patch: Record<string, unknown> = {
           report: {
@@ -238,14 +206,10 @@ export async function POST(req: Request) {
       mock: Boolean(report.mock) || !hasLlmProvider() || mockCheck.mock,
       supabase: hasSupabaseEnv(),
       email_sent,
-      sales_alert_sent,
       ...(email_status ? { email_status } : {}),
       ...(email_error ? { email_error } : {}),
       ...(email_skip_reason ? { email_skip_reason } : {}),
       ...(email_provider ? { email_provider } : {}),
-      ...(sales_alert_status ? { sales_alert_status } : {}),
-      ...(sales_alert_error ? { sales_alert_error } : {}),
-      ...(sales_alert_skip_reason ? { sales_alert_skip_reason } : {}),
     });
   } catch (err) {
     if (err instanceof ZodError) {
