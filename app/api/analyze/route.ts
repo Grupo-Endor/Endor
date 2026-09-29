@@ -17,6 +17,8 @@ import { randomUUID } from "crypto";
  * Si status === ready → intenta email al cliente (Composio Gmail / Resend).
  * Si needs_review → no envía correo.
  */
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -49,8 +51,8 @@ export async function POST(req: Request) {
     if (hasSupabaseEnv()) {
       const insertClient = createServerClient();
       if (insertClient) {
-        // Insert completo de una sola vez: anon no tiene UPDATE RLS y
-        // SUPABASE_SERVICE_ROLE_KEY puede faltar. El análisis ya terminó arriba.
+        // Insert completo de una sola vez: el análisis ya terminó arriba.
+        // Anon UPDATE RLS exists (004) for email_sent_at patches.
         const { data, error } = await insertClient
           .from("diagnoses")
           .insert({
@@ -76,7 +78,7 @@ export async function POST(req: Request) {
         } else {
           id = data.id as string;
           supabaseOk = true;
-          // Best-effort update path if service role exists (e.g. later email_sent_at)
+          // Best-effort update path if service role exists
           const updater = createServiceClient();
           if (updater) {
             await updater
@@ -113,16 +115,16 @@ export async function POST(req: Request) {
       email_skip_reason = emailResult.email_skip_reason;
       email_provider = emailResult.provider;
 
+      // Always attempt to patch email_sent_at (anon UPDATE RLS now exists)
+      // even without service role. Do not block analyze on patch failure.
       if (email_sent && emailResult.email_sent_at && supabaseOk) {
-        const updater =
-          createServiceClient() ?? createServerClient();
+        const updater = createServiceClient() ?? createServerClient();
         if (updater) {
           const { error: emailColErr } = await updater
             .from("diagnoses")
             .update({ email_sent_at: emailResult.email_sent_at })
             .eq("id", id);
           if (emailColErr) {
-            // Column may not exist yet — do not fail analyze
             console.warn(
               "email_sent_at update skipped:",
               emailColErr.message
