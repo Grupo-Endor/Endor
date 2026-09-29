@@ -1,10 +1,10 @@
 /**
  * Construcción del reporte de salida.
- * Estructura fija (manual §7):
- * 1 veredicto · 2 global · 3 semáforo · 4 top 3 hallazgos ·
+ * Estructura fija (manual §7 + PAI § Lectura PAI):
+ * 1 veredicto · 2 global · 3 semáforo · 3b tira PAI · 4 top 3 hallazgos ·
  * 5 lo que funciona · 6 patrón sector · 7 punto ciego · 8 CTA único
  *
- * Hallazgos: hecho → comparación → costo → cierre de categoría abierta.
+ * Hallazgos: fact → compare → cost → category_closer.
  * Nunca: instrucción, nombre, tono, paleta, Brand DNA / DEFINE.
  */
 
@@ -15,6 +15,7 @@ import {
   type DimensionKey,
   type DimensionScore,
   type Finding,
+  type PaiChain,
   type SemaphoreColor,
 } from "@/types/diagnosis";
 import {
@@ -30,8 +31,20 @@ export interface CtaProfile {
   phrase: string;
 }
 
-/** Un solo CTA por perfil de rojos (manual §8) */
-export function pickCta(dimensions: DimensionScore[]): CtaProfile {
+/** Un solo CTA por perfil de rojos (manual §8); Concepto ausente → Brand DNA */
+export function pickCta(
+  dimensions: DimensionScore[],
+  pai?: PaiChain
+): CtaProfile {
+  if (pai?.concepto === "ausente") {
+    return {
+      profile: "pai_concepto_ausente",
+      service_hint: "taller_brand_dna",
+      phrase:
+        "Tu problema no es de diseño, es de definición. Empieza por ahí.",
+    };
+  }
+
   const red = new Set(
     dimensions.filter((d) => d.color === "red").map((d) => d.key)
   );
@@ -128,17 +141,26 @@ export function buildReport(params: {
   sector_pattern_matches: number;
   blind_spot?: string;
   position_vs_group?: string;
+  pai: PaiChain;
+  pai_reading: string;
+  intention_quote: string;
+  force_human_review?: boolean;
   mock?: boolean;
 }): DiagnosisReport {
   const { global_score, global_color } = computeGlobalScore(params.dimensions);
-  const needs_human_review = anyNeedsHumanReview(params.dimensions);
-  const cta = pickCta(params.dimensions);
+  const needs_human_review =
+    anyNeedsHumanReview(params.dimensions) ||
+    Boolean(params.force_human_review);
+  const cta = pickCta(params.dimensions, params.pai);
 
   return {
     verdict: params.verdict,
     global_score,
     global_color,
     dimensions: params.dimensions,
+    pai: params.pai,
+    pai_reading: params.pai_reading,
+    intention_quote: params.intention_quote,
     findings: params.findings.slice(0, 3),
     what_works: params.what_works,
     sector_pattern: params.sector_pattern,
@@ -156,9 +178,16 @@ const MOCK_SCORES: Record<DimensionKey, number | null> = {
   identidad_visual: 62,
   claridad_propuesta: 48,
   voz_contenido: 55,
-  coherencia_puntos_contacto: null, // suele faltar evidencia física
+  coherencia_puntos_contacto: null,
   presencia_encontrabilidad: 38,
   diferenciacion_real: 35,
+};
+
+const MOCK_PAI: PaiChain = {
+  producto: "claro",
+  atributo: "difuso",
+  idea: "ausente",
+  concepto: "ausente",
 };
 
 /** Reporte mock para UI / sin OPENAI_API_KEY */
@@ -220,18 +249,24 @@ export function buildMockReport(intake: DiagnosisIntake): DiagnosisReport {
     },
   ];
 
+  const feel = (intake.intention.feel || "…").slice(0, 100);
+
   return buildReport({
     intake,
     dimensions,
     findings,
     verdict:
-      "Tu marca tiene base visual usable pero desaparece frente a tus competidores: hoy eres una marca de categoría.",
+      "Tu marca se detiene en Atributo: dices un rasgo, pero nunca lo convertiste en algo que tu cliente quiera. En tu rubro operas como marca de categoría.",
     what_works:
       "Hay consistencia parcial en identidad visual (amarillo alto): el sistema no está roto del todo, por eso los rojos también son creíbles.",
     sector_pattern: `En ${sector} el patrón suele incluir promesas genéricas, estética intercambiable y poca frase propia.`,
     sector_pattern_matches: 3,
     position_vs_group:
       "Por debajo de la mediana en diferenciación y encontrabilidad (grupo mock de 4).",
+    pai: MOCK_PAI,
+    pai_reading:
+      "Tu marca se detiene en Atributo. Dices un rasgo, pero nunca lo convertiste en algo que tu cliente quiera.",
+    intention_quote: `Tú dijiste que querías que la gente sintiera: «${feel}». La cadena PAI muestra Producto claro, Atributo difuso e Idea/Concepto ausentes.`,
     mock: true,
   });
 }

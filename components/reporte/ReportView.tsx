@@ -1,5 +1,11 @@
 import type { DiagnosisReport } from "@/types/diagnosis";
-import { SEMAPHORE_LABELS } from "@/types/diagnosis";
+import {
+  PAI_META,
+  PAI_STATUS_LABELS,
+  SEMAPHORE_LABELS,
+  type PaiLinkKey,
+  type PaiStatus,
+} from "@/types/diagnosis";
 import { SemaphoreDot } from "@/components/ui/SemaphoreDot";
 
 const COLOR_TEXT: Record<string, string> = {
@@ -8,6 +14,14 @@ const COLOR_TEXT: Record<string, string> = {
   green: "text-emerald-400",
   not_evaluated: "text-neutral-500",
 };
+
+const PAI_COLOR: Record<PaiStatus, string> = {
+  claro: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+  difuso: "text-endor-accent border-endor-accent/30 bg-endor-accent/10",
+  ausente: "text-red-400 border-red-500/30 bg-red-500/10",
+};
+
+const PAI_ORDER: PaiLinkKey[] = ["producto", "atributo", "idea", "concepto"];
 
 export function ReportView({
   report,
@@ -29,8 +43,8 @@ export function ReportView({
 
       {report.needs_human_review ? (
         <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          Una o más dimensiones difieren &gt;15 entre corridas independientes —
-          marcado para revisión humana antes de entrega final.
+          Una o más dimensiones (o eslabones PAI) difieren entre corridas
+          independientes — marcado para revisión humana antes de entrega final.
         </p>
       ) : null}
 
@@ -90,6 +104,41 @@ export function ReportView({
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* 3b. Lectura PAI */}
+      <section>
+        <h2 className="mb-4 text-sm uppercase tracking-[0.2em] text-neutral-500">
+          Cadena PAI
+        </h2>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {PAI_ORDER.map((key) => {
+            const status = report.pai?.[key] ?? "ausente";
+            return (
+              <div
+                key={key}
+                className={`rounded-xl border px-3 py-4 text-center ${PAI_COLOR[status]}`}
+              >
+                <p className="text-[10px] uppercase tracking-[0.15em] opacity-80">
+                  {PAI_META[key].label}
+                </p>
+                <p className="mt-2 text-sm font-semibold">
+                  {PAI_STATUS_LABELS[status]}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+        {report.pai_reading ? (
+          <p className="mt-4 text-sm leading-relaxed text-neutral-200">
+            {report.pai_reading}
+          </p>
+        ) : null}
+        {report.intention_quote ? (
+          <p className="mt-3 border-l-2 border-endor-accent/50 pl-4 text-sm italic text-neutral-400">
+            {report.intention_quote}
+          </p>
+        ) : null}
       </section>
 
       {/* 4. Top 3 hallazgos */}
