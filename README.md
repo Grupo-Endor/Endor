@@ -73,6 +73,12 @@ npm run build
 - `evidence_files`: insert/select anon (ajustar en producción)
 - `sector_benchmarks`: solo lectura pública (stub)
 
+## Email / booking alerts
+
+- Cliente: correo del reporte al quedar `ready` (Composio Gmail `herramientas@`).
+- Patricia: **solo** cuando el lead agenda (`/api/cron/booking-alerts` cada 5 min).
+  Ver `docs/email-setup.md`.
+
 ## Scripts
 
 | Comando | Uso |
