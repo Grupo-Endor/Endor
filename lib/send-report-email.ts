@@ -30,7 +30,7 @@ export type EmailStatus =
   | "skipped_not_ready"
   | "skipped_invalid"
   | "skipped_no_provider"
-  | "falled";
+  | "failed";
 
 export type EmailSendResult = {
   email_sent: boolean;
