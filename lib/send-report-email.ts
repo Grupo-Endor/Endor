@@ -7,12 +7,15 @@
  * 2) RESEND_API_KEY → Resend (fallback; from EMAIL_FROM o onboarding@resend.dev)
  * 3) Sin claves → email_sent: false + email_skip_reason (no falla el analyze)
  *
- * Solo se llama cuando status === "ready" (no cuando needs_review).
+ * Solo se envía cuando status === "ready" Y el reporte es real (no mock/demo/placeholder).
  * PDF one-pager: link en el HTML; no bloquear email si PDF falla.
+ *
+ * GATE (belt): también se valida en app/api/analyze/route.ts antes de llamar.
  */
 
 import type { DiagnosisIntake, DiagnosisReport, SemaphoreColor } from "@/types/diagnosis";
 import { PAI_META, PAI_STATUS_LABELS, SEMAPHORE_LABELS } from "@/types/diagnosis";
+import { isMockLikeReport } from "@/lib/report";
 
 const DEFAULT_BOOKING =
   "https://calendar.app.google/P3Pi2TQHQ8cSgr6N7";
@@ -21,12 +24,22 @@ const HERRAMIENTAS_FROM = "herramientas@grupoendor.com";
 /** Composio connected account for herramientas@grupoendor.com */
 export const COMPOSIO_GMAIL_ACCOUNT_ID = "gmail_bizet-strid";
 
+export type EmailStatus =
+  | "sent"
+  | "skipped_mock"
+  | "skipped_not_ready"
+  | "skipped_invalid"
+  | "skipped_no_provider"
+  | "failed";
+
 export type EmailSendResult = {
   email_sent: boolean;
   email_error?: string;
   email_skip_reason?: string;
   provider?: "composio_gmail" | "resend";
   email_sent_at?: string;
+  /** Durable outcome for diagnoses.email_status */
+  email_status: EmailStatus;
 };
 
 const COLOR_HEX: Record<SemaphoreColor, string> = {
@@ -255,6 +268,7 @@ async function sendViaComposio(params: {
     return {
       email_sent: false,
       email_skip_reason: "COMPOSIO_API_KEY missing",
+      email_status: "skipped_no_provider",
     };
   }
 
@@ -298,6 +312,7 @@ async function sendViaComposio(params: {
         email_sent: true,
         provider: "composio_gmail",
         email_sent_at: new Date().toISOString(),
+        email_status: "sent",
       };
     }
     errors.push(result.error);
@@ -308,6 +323,7 @@ async function sendViaComposio(params: {
     email_sent: false,
     email_error: errors.join(" | ").slice(0, 800),
     provider: "composio_gmail",
+    email_status: "failed",
   };
 }
 
@@ -321,6 +337,7 @@ async function sendViaResend(params: {
     return {
       email_sent: false,
       email_skip_reason: "RESEND_API_KEY missing",
+      email_status: "skipped_no_provider",
     };
   }
   const from =
@@ -347,6 +364,7 @@ async function sendViaResend(params: {
       email_sent: false,
       email_error: `Resend HTTP ${res.status}: ${text.slice(0, 200)}`,
       provider: "resend",
+      email_status: "failed",
     };
   }
 
@@ -354,28 +372,119 @@ async function sendViaResend(params: {
     email_sent: true,
     provider: "resend",
     email_sent_at: new Date().toISOString(),
+    email_status: "sent",
   };
 }
 
 /**
+ * Quality gate — never send mock/demo/placeholder/incomplete reports.
+ * Also called from app/api/analyze/route.ts (belt and suspenders).
+ */
+export function assertReportEmailable(params: {
+  report: DiagnosisReport | null | undefined;
+  status?: string;
+  diagnosisId?: string;
+}): { ok: true } | { ok: false; reason: string; email_status: EmailStatus } {
+  const { report, status, diagnosisId } = params;
+  if (status !== undefined && status !== "ready") {
+    return {
+      ok: false,
+      reason: `status is ${status || "undefined"} — email withheld (only status=ready)`,
+      email_status: "skipped_not_ready",
+    };
+  }
+  if (!report) {
+    return {
+      ok: false,
+      reason: "report missing — refusing to email",
+      email_status: "skipped_mock",
+    };
+  }
+  const mockCheck = isMockLikeReport(report);
+  if (mockCheck.mock) {
+    return {
+      ok: false,
+      reason: `mock/demo/placeholder report blocked: ${mockCheck.reason}`,
+      email_status: "skipped_mock",
+    };
+  }
+  if (!diagnosisId || !String(diagnosisId).trim()) {
+    return {
+      ok: false,
+      reason: "diagnosisId missing — refusing to email without PDF/report links",
+      email_status: "skipped_invalid",
+    };
+  }
+  return { ok: true };
+}
+
+function looksLikePlaceholderHtml(html: string): boolean {
+  const trimmed = html.replace(/\s+/g, " ").trim();
+  if (!trimmed) return true;
+  if (trimmed.length < 200) return true;
+  const lower = trimmed.toLowerCase();
+  if (lower === "placeholder" || lower.includes(">placeholder<")) return true;
+  if (lower.includes("demostración") || lower.includes("demostracion")) return true;
+  if (lower.includes("(mock)") || lower.includes("grupo mock")) return true;
+  // Real diagnosis emails always include these sections from buildReportEmailHtml
+  if (!lower.includes("puntaje global") || !lower.includes("cadena pai")) return true;
+  return false;
+}
+
+/**
  * Envía el HTML del reporte. Nunca lanza: errores van en el resultado.
+ * NEVER emails mock/demo/placeholder reports (see assertReportEmailable).
  */
 export async function sendReportEmail(params: {
   intake: DiagnosisIntake;
   report: DiagnosisReport;
   diagnosisId: string;
+  /** When provided, must be "ready" or email is skipped. */
+  status?: string;
 }): Promise<EmailSendResult> {
+  const gate = assertReportEmailable({
+    report: params.report,
+    status: params.status,
+    diagnosisId: params.diagnosisId,
+  });
+  if (!gate.ok) {
+    console.warn(
+      `[email] SKIPPED (${gate.email_status}) id=${params.diagnosisId}: ${gate.reason}`
+    );
+    return {
+      email_sent: false,
+      email_skip_reason: gate.reason,
+      email_status: gate.email_status,
+    };
+  }
+
   const { to, subject, html } = buildReportEmailHtml(params);
   if (!to || !to.includes("@")) {
+    console.warn(
+      `[email] SKIPPED (skipped_invalid) id=${params.diagnosisId}: invalid work_email`
+    );
     return {
       email_sent: false,
       email_skip_reason: "intake.contact.work_email missing or invalid",
+      email_status: "skipped_invalid",
+    };
+  }
+
+  if (looksLikePlaceholderHtml(html)) {
+    console.warn(
+      `[email] SKIPPED (skipped_mock) id=${params.diagnosisId}: HTML looks like placeholder/mock — refusing send`
+    );
+    return {
+      email_sent: false,
+      email_skip_reason:
+        "generated HTML looks like placeholder/mock/demo — refusing send",
+      email_status: "skipped_mock",
     };
   }
 
   if (process.env.COMPOSIO_API_KEY?.trim()) {
     console.info(
-      `[email] composio gmail → ${to} account=${resolveAccountId()}`
+      `[email] composio gmail → ${to} account=${resolveAccountId()} id=${params.diagnosisId}`
     );
     return sendViaComposio({ to, subject, html });
   }
@@ -387,5 +496,6 @@ export async function sendReportEmail(params: {
     email_sent: false,
     email_skip_reason:
       "No email provider configured. Set COMPOSIO_API_KEY (preferred: Gmail herramientas@grupoendor.com via gmail_bizet-strid) or RESEND_API_KEY on Vercel.",
+    email_status: "skipped_no_provider",
   };
 }

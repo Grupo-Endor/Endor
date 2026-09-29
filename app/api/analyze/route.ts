@@ -8,14 +8,18 @@ import {
   hasSupabaseEnv,
 } from "@/lib/supabase/server";
 import { mockSave } from "@/lib/mock-store";
-import { sendReportEmail } from "@/lib/send-report-email";
+import {
+  assertReportEmailable,
+  sendReportEmail,
+} from "@/lib/send-report-email";
+import { isMockLikeReport } from "@/lib/report";
 import { randomUUID } from "crypto";
 
 /**
  * POST /api/analyze
  * Valida intake → guarda fila → 2 corridas LLM OpenAI/OpenRouter (o mock) → reporte JSON.
- * Si status === ready → intenta email al cliente (Composio Gmail / Resend).
- * Si needs_review → no envía correo.
+ * Email ONLY when status === ready AND report is real (not mock/demo/placeholder).
+ * Gates in this route AND in lib/send-report-email.ts (belt and suspenders).
  */
 export const maxDuration = 60;
 
@@ -103,67 +107,98 @@ export async function POST(req: Request) {
     let email_error: string | undefined;
     let email_skip_reason: string | undefined;
     let email_provider: string | undefined;
+    let email_sent_at: string | undefined;
+    let email_status:
+      | "sent"
+      | "skipped_mock"
+      | "skipped_not_ready"
+      | "skipped_invalid"
+      | "skipped_no_provider"
+      | "failed"
+      | undefined;
 
-    if (status === "ready") {
+    // Belt: refuse mock/demo/placeholder before even calling the sender.
+    const mockCheck = isMockLikeReport(report);
+    const preGate = assertReportEmailable({
+      report,
+      status,
+      diagnosisId: id,
+    });
+
+    if (!preGate.ok) {
+      email_skip_reason = preGate.reason;
+      email_status = preGate.email_status;
+      console.warn(
+        `[email] SKIPPED at analyze gate (${email_status}) id=${id}: ${email_skip_reason}`
+      );
+    } else if (status === "ready") {
+      // Await send before responding so the client sees email_sent outcome.
+      // sendReportEmail re-checks the same gate (suspenders).
       const emailResult = await sendReportEmail({
         intake,
         report,
         diagnosisId: id,
+        status,
       });
       email_sent = emailResult.email_sent;
       email_error = emailResult.email_error;
       email_skip_reason = emailResult.email_skip_reason;
       email_provider = emailResult.provider;
-
-      // Persist email outcome on the row (and inside report JSON) so failures
-      // are visible without relying only on Vercel logs.
-      if (supabaseOk) {
-        const updater = createServiceClient() ?? createServerClient();
-        if (updater) {
-          const emailMeta = {
-            email_sent: emailResult.email_sent,
-            email_provider: emailResult.provider ?? null,
-            email_sent_at: emailResult.email_sent_at ?? null,
-            email_error: emailResult.email_error ?? null,
-            email_skip_reason: emailResult.email_skip_reason ?? null,
-          };
-          const reportWithEmail = {
-            ...report,
-            _email: emailMeta,
-          };
-          const patch: Record<string, unknown> = {
-            report: reportWithEmail,
-          };
-          if (email_sent && emailResult.email_sent_at) {
-            patch.email_sent_at = emailResult.email_sent_at;
-          }
-          const { error: emailColErr } = await updater
-            .from("diagnoses")
-            .update(patch)
-            .eq("id", id);
-          if (emailColErr) {
-            console.warn("email meta update skipped:", emailColErr.message);
-          }
-          if (!email_sent) {
-            console.error(
-              "[email] send failed:",
-              emailResult.email_error || emailResult.email_skip_reason
-            );
-          }
-        }
+      email_sent_at = emailResult.email_sent_at;
+      email_status = emailResult.email_status;
+      if (!email_sent) {
+        console.error(
+          "[email] send failed/skipped:",
+          emailResult.email_status,
+          emailResult.email_error || emailResult.email_skip_reason
+        );
       }
     } else {
       email_skip_reason =
         "status is needs_review — email withheld until human review";
+      email_status = "skipped_not_ready";
+      console.warn(
+        `[email] SKIPPED (skipped_not_ready) id=${id}: ${email_skip_reason}`
+      );
+    }
+
+    // Persist email outcome on the row (and inside report JSON).
+    if (supabaseOk && email_status) {
+      const updater = createServiceClient() ?? createServerClient();
+      if (updater) {
+        const emailMeta = {
+          email_sent,
+          email_provider: email_provider ?? null,
+          email_sent_at: email_sent_at ?? null,
+          email_error: email_error ?? null,
+          email_skip_reason: email_skip_reason ?? null,
+          email_status,
+        };
+        const patch: Record<string, unknown> = {
+          report: { ...report, _email: emailMeta },
+          email_status,
+        };
+        if (email_sent && email_sent_at) {
+          patch.email_sent_at = email_sent_at;
+        }
+        const { error: emailColErr } = await updater
+          .from("diagnoses")
+          .update(patch)
+          .eq("id", id);
+        if (emailColErr) {
+          console.warn("email meta update skipped:", emailColErr.message);
+        }
+      }
     }
 
     return NextResponse.json({
       id,
       status,
       report,
-      mock: Boolean(report.mock) || !hasLlmProvider(),
+      mock: Boolean(report.mock) || !hasLlmProvider() || mockCheck.mock,
       supabase: hasSupabaseEnv(),
       email_sent,
+      ...(email_status ? { email_status } : {}),
       ...(email_error ? { email_error } : {}),
       ...(email_skip_reason ? { email_skip_reason } : {}),
       ...(email_provider ? { email_provider } : {}),

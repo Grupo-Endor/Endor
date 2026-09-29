@@ -174,6 +174,96 @@ export function buildReport(params: {
   };
 }
 
+
+/** Canonical mock dimension scores from buildMockReport (with/without physical materials). */
+export const MOCK_SCORE_FINGERPRINTS: Array<Record<DimensionKey, number | null>> = [
+  {
+    identidad_visual: 62,
+    claridad_propuesta: 48,
+    voz_contenido: 55,
+    coherencia_puntos_contacto: null,
+    presencia_encontrabilidad: 38,
+    diferenciacion_real: 35,
+  },
+  {
+    identidad_visual: 62,
+    claridad_propuesta: 48,
+    voz_contenido: 55,
+    coherencia_puntos_contacto: 44,
+    presencia_encontrabilidad: 38,
+    diferenciacion_real: 35,
+  },
+];
+
+const MOCK_COPY_MARKERS = [
+  "(mock)",
+  "grupo mock",
+  "placeholder",
+  "demostración",
+  "demostracion",
+  "marca demo",
+  "reporte mock",
+];
+
+/**
+ * True when the report is a demo/mock/placeholder and must NEVER be emailed.
+ * Detects report.mock, buildMockReport score fingerprints, and mock copy markers.
+ */
+export function isMockLikeReport(
+  report: DiagnosisReport | null | undefined
+): { mock: true; reason: string } | { mock: false } {
+  if (!report) {
+    return { mock: true, reason: "report missing" };
+  }
+  if (report.mock === true) {
+    return { mock: true, reason: "report.mock === true" };
+  }
+  const dims = report.dimensions;
+  if (!Array.isArray(dims) || dims.length === 0) {
+    return { mock: true, reason: "report.dimensions missing/empty" };
+  }
+  const byKey = Object.fromEntries(
+    dims.map((d) => [d.key, d.score])
+  ) as Record<DimensionKey, number | null>;
+  for (const fp of MOCK_SCORE_FINGERPRINTS) {
+    const keys = Object.keys(fp) as DimensionKey[];
+    if (keys.every((k) => byKey[k] === fp[k])) {
+      return {
+        mock: true,
+        reason: "dimension scores match buildMockReport fingerprint",
+      };
+    }
+  }
+  const blob = [
+    report.verdict,
+    report.pai_reading,
+    report.intention_quote,
+    report.what_works,
+    report.sector_pattern,
+    report.position_vs_group,
+    report.blind_spot,
+    ...(report.findings ?? []).flatMap((f) => [
+      f.fact,
+      f.compare,
+      f.cost,
+      f.category_closer,
+      f.evidence_note,
+    ]),
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase();
+  for (const marker of MOCK_COPY_MARKERS) {
+    if (blob.includes(marker)) {
+      return { mock: true, reason: `mock/demo copy marker: ${marker}` };
+    }
+  }
+  if (!String(report.verdict ?? "").trim()) {
+    return { mock: true, reason: "empty verdict" };
+  }
+  return { mock: false };
+}
+
 const MOCK_SCORES: Record<DimensionKey, number | null> = {
   identidad_visual: 62,
   claridad_propuesta: 48,
