@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-endor-black: #0a0a0a;
+  --color-endor-white: #fafafa;
+  --color-endor-accent: #ffe255;
+  --color-endor-muted: #a3a3a3;
+  --font-sans: "Mulish", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-endor-black);
+  color: var(--color-endor-white);
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+/* Mulish: evitar weight 700 (manual de marca) */
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 600;
+}
+
+::selection {
+  background: #ffe255;
+  color: #0a0a0a;
+}
