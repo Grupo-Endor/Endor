@@ -8,17 +8,18 @@ import {
   hasSupabaseEnv,
 } from "@/lib/supabase/server";
 import { mockSave } from "@/lib/mock-store";
+import { sendReportEmail } from "@/lib/send-report-email";
 import { randomUUID } from "crypto";
 
 /**
  * POST /api/analyze
  * Valida intake → guarda fila → 2 corridas OpenAI (o mock) → reporte JSON.
- * Principio: diagnosticar, nunca recetar (ver lib/openai-analyze.ts).
+ * Si status === ready → intenta email al cliente (Composio Gmail / Resend).
+ * Si needs_review → no envía correo.
  */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // Evitar persistir data URLs enormes en DB de demo
     if (body?.identity?.logo_data_url) {
       const len = String(body.identity.logo_data_url).length;
       if (len > 200_000) {
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
 
     const status = report.needs_human_review ? "needs_review" : "ready";
     let id: string = randomUUID();
+    let supabaseOk = false;
 
     if (hasSupabaseEnv()) {
       const insertClient = createServerClient();
@@ -49,10 +51,10 @@ export async function POST(req: Request) {
 
         if (error) {
           console.error("Supabase insert error:", error.message);
-          // Continuar con mock store
           mockSave(id, intake, report);
         } else {
           id = data.id as string;
+          supabaseOk = true;
           const updater = createServiceClient() ?? insertClient;
           await updater
             .from("diagnoses")
@@ -71,12 +73,54 @@ export async function POST(req: Request) {
       mockSave(id, intake, report);
     }
 
+    let email_sent = false;
+    let email_error: string | undefined;
+    let email_skip_reason: string | undefined;
+    let email_provider: string | undefined;
+
+    if (status === "ready") {
+      const emailResult = await sendReportEmail({
+        intake,
+        report,
+        diagnosisId: id,
+      });
+      email_sent = emailResult.email_sent;
+      email_error = emailResult.email_error;
+      email_skip_reason = emailResult.email_skip_reason;
+      email_provider = emailResult.provider;
+
+      if (email_sent && emailResult.email_sent_at && supabaseOk) {
+        const updater =
+          createServiceClient() ?? createServerClient();
+        if (updater) {
+          const { error: emailColErr } = await updater
+            .from("diagnoses")
+            .update({ email_sent_at: emailResult.email_sent_at })
+            .eq("id", id);
+          if (emailColErr) {
+            // Column may not exist yet — do not fail analyze
+            console.warn(
+              "email_sent_at update skipped:",
+              emailColErr.message
+            );
+          }
+        }
+      }
+    } else {
+      email_skip_reason =
+        "status is needs_review — email withheld until human review";
+    }
+
     return NextResponse.json({
       id,
       status,
       report,
       mock: Boolean(report.mock) || !process.env.OPENAI_API_KEY,
       supabase: hasSupabaseEnv(),
+      email_sent,
+      ...(email_error ? { email_error } : {}),
+      ...(email_skip_reason ? { email_skip_reason } : {}),
+      ...(email_provider ? { email_provider } : {}),
     });
   } catch (err) {
     if (err instanceof ZodError) {
