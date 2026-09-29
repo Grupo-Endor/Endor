@@ -91,7 +91,7 @@ Máximo 3 findings, ordenados por impacto en el global. Scores 0–100 o null.`;
 }
 
 function parseRun(raw: string): LlmRunResult {
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+  const cleaned = raw.replace(/^```json\\s*/i, "").replace(/```$/i, "").trim();
   const data = JSON.parse(cleaned) as LlmRunResult;
   const scores = {} as Record<DimensionKey, number | null>;
   for (const key of DIMENSION_KEYS) {
