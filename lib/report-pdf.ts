@@ -313,7 +313,7 @@ export async function buildReportPdf(params: {
     color: MUTED,
   });
 
-  page.drawText(`Endor · ID ${diagnosisId}`, {
+  page.drawText("Endor · Diagnóstico de marca", {
     x: 40,
     y: 28,
     size: 7,

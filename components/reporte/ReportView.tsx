@@ -26,7 +26,7 @@ const PAI_ORDER: PaiLinkKey[] = ["producto", "atributo", "idea", "concepto"];
 export function ReportView({
   report,
   company,
-  id,
+  id: _id,
 }: {
   report: DiagnosisReport;
   company?: string;
@@ -223,14 +223,8 @@ export function ReportView({
         >
           Agendar llamada de 20 min
         </a>
-        <p className="mt-4 text-[10px] uppercase tracking-wider text-neutral-600">
-          Perfil CTA: {report.cta.profile} · {report.cta.service_hint}
-        </p>
       </section>
 
-      <p className="text-center text-xs text-neutral-600">
-        ID {id} · {new Date(report.analyzed_at).toLocaleString("es-MX")}
-      </p>
     </article>
   );
 }

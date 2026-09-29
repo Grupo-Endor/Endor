@@ -115,19 +115,39 @@ export async function POST(req: Request) {
       email_skip_reason = emailResult.email_skip_reason;
       email_provider = emailResult.provider;
 
-      // Always attempt to patch email_sent_at (anon UPDATE RLS now exists)
-      // even without service role. Do not block analyze on patch failure.
-      if (email_sent && emailResult.email_sent_at && supabaseOk) {
+      // Persist email outcome on the row (and inside report JSON) so failures
+      // are visible without relying only on Vercel logs.
+      if (supabaseOk) {
         const updater = createServiceClient() ?? createServerClient();
         if (updater) {
+          const emailMeta = {
+            email_sent: emailResult.email_sent,
+            email_provider: emailResult.provider ?? null,
+            email_sent_at: emailResult.email_sent_at ?? null,
+            email_error: emailResult.email_error ?? null,
+            email_skip_reason: emailResult.email_skip_reason ?? null,
+          };
+          const reportWithEmail = {
+            ...report,
+            _email: emailMeta,
+          };
+          const patch: Record<string, unknown> = {
+            report: reportWithEmail,
+          };
+          if (email_sent && emailResult.email_sent_at) {
+            patch.email_sent_at = emailResult.email_sent_at;
+          }
           const { error: emailColErr } = await updater
             .from("diagnoses")
-            .update({ email_sent_at: emailResult.email_sent_at })
+            .update(patch)
             .eq("id", id);
           if (emailColErr) {
-            console.warn(
-              "email_sent_at update skipped:",
-              emailColErr.message
+            console.warn("email meta update skipped:", emailColErr.message);
+          }
+          if (!email_sent) {
+            console.error(
+              "[email] send failed:",
+              emailResult.email_error || emailResult.email_skip_reason
             );
           }
         }

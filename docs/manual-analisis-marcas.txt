@@ -517,4 +517,7 @@ Lo que la plataforma nunca hace
 
 
                                                                                         Page 11 of 11
-
+
+
+---
+Ver también: docs/regla-rigor-extremo.md (inyectada al system prompt del análisis).
