@@ -11,6 +11,7 @@ import { mockSave } from "@/lib/mock-store";
 import {
   assertReportEmailable,
   sendReportEmail,
+  sendSalesAlertEmail,
 } from "@/lib/send-report-email";
 import { isMockLikeReport } from "@/lib/report";
 import { randomUUID } from "crypto";
@@ -18,7 +19,9 @@ import { randomUUID } from "crypto";
 /**
  * POST /api/analyze
  * Valida intake → guarda fila → 2 corridas LLM OpenAI/OpenRouter (o mock) → reporte JSON.
- * Email ONLY when status === ready AND report is real (not mock/demo/placeholder).
+ * Entrega automática: status siempre "ready" cuando hay reporte (nunca needs_review
+ * para gating de entrega). needs_human_review se guarda en DB/JSON solo como flag interno.
+ * Email cliente + alert comercial (Patricia) ONLY when status === ready AND report is real.
  * Gates in this route AND in lib/send-report-email.ts (belt and suspenders).
  */
 export const maxDuration = 60;
@@ -48,7 +51,9 @@ export async function POST(req: Request) {
     const intake = parseIntake(body);
     const report = await analyzeBrand(intake);
 
-    const status = report.needs_human_review ? "needs_review" : "ready";
+    // La IA entrega sola: siempre "ready" para entrega. Dual-run + averaging siguen;
+    // needs_human_review queda en report/DB como flag interno (invisible al cliente).
+    const status = "ready";
     let id: string = randomUUID();
     let supabaseOk = false;
 
@@ -125,15 +130,29 @@ export async function POST(req: Request) {
       diagnosisId: id,
     });
 
+    let sales_alert_sent = false;
+    let sales_alert_status:
+      | "sent"
+      | "skipped_mock"
+      | "skipped_not_ready"
+      | "skipped_invalid"
+      | "skipped_no_provider"
+      | "failed"
+      | undefined;
+    let sales_alert_error: string | undefined;
+    let sales_alert_skip_reason: string | undefined;
+
     if (!preGate.ok) {
       email_skip_reason = preGate.reason;
       email_status = preGate.email_status;
+      sales_alert_status = preGate.email_status;
+      sales_alert_skip_reason = preGate.reason;
       console.warn(
         `[email] SKIPPED at analyze gate (${email_status}) id=${id}: ${email_skip_reason}`
       );
-    } else if (status === "ready") {
-      // Await send before responding so the client sees email_sent outcome.
-      // sendReportEmail re-checks the same gate (suspenders).
+    } else {
+      // Await sends before responding so the client sees email_sent outcome.
+      // sendReportEmail / sendSalesAlertEmail re-check the same gate (suspenders).
       const emailResult = await sendReportEmail({
         intake,
         report,
@@ -153,13 +172,24 @@ export async function POST(req: Request) {
           emailResult.email_error || emailResult.email_skip_reason
         );
       }
-    } else {
-      email_skip_reason =
-        "status is needs_review — email withheld until human review";
-      email_status = "skipped_not_ready";
-      console.warn(
-        `[email] SKIPPED (skipped_not_ready) id=${id}: ${email_skip_reason}`
-      );
+
+      const salesResult = await sendSalesAlertEmail({
+        intake,
+        report,
+        diagnosisId: id,
+        status,
+      });
+      sales_alert_sent = salesResult.email_sent;
+      sales_alert_status = salesResult.email_status;
+      sales_alert_error = salesResult.email_error;
+      sales_alert_skip_reason = salesResult.email_skip_reason;
+      if (!sales_alert_sent) {
+        console.error(
+          "[sales-alert] send failed/skipped:",
+          salesResult.email_status,
+          salesResult.email_error || salesResult.email_skip_reason
+        );
+      }
     }
 
     // Persist email outcome on the row (and inside report JSON).
@@ -173,10 +203,20 @@ export async function POST(req: Request) {
           email_error: email_error ?? null,
           email_skip_reason: email_skip_reason ?? null,
           email_status,
+          sales_alert_sent,
+          sales_alert_status: sales_alert_status ?? null,
+          sales_alert_error: sales_alert_error ?? null,
+          sales_alert_skip_reason: sales_alert_skip_reason ?? null,
         };
         const patch: Record<string, unknown> = {
-          report: { ...report, _email: emailMeta },
+          report: {
+            ...report,
+            // Flag interno; nunca se muestra al cliente en ReportView.
+            needs_human_review: report.needs_human_review,
+            _email: emailMeta,
+          },
           email_status,
+          needs_human_review: report.needs_human_review,
         };
         if (email_sent && email_sent_at) {
           patch.email_sent_at = email_sent_at;
@@ -198,10 +238,14 @@ export async function POST(req: Request) {
       mock: Boolean(report.mock) || !hasLlmProvider() || mockCheck.mock,
       supabase: hasSupabaseEnv(),
       email_sent,
+      sales_alert_sent,
       ...(email_status ? { email_status } : {}),
       ...(email_error ? { email_error } : {}),
       ...(email_skip_reason ? { email_skip_reason } : {}),
       ...(email_provider ? { email_provider } : {}),
+      ...(sales_alert_status ? { sales_alert_status } : {}),
+      ...(sales_alert_error ? { sales_alert_error } : {}),
+      ...(sales_alert_skip_reason ? { sales_alert_skip_reason } : {}),
     });
   } catch (err) {
     if (err instanceof ZodError) {
