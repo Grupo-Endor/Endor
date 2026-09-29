@@ -5,7 +5,7 @@
  * - 0–39 rojo, 40–79 amarillo, 80–100 verde
  * - Missing evidence = not_evaluated (no penaliza; no entra al promedio)
  * - Global nunca arriba de 60 si Diferenciación real está en rojo
- * - Dos corridas: si una dimensión difiere >15 → needs_human_review
+ * - Dos corridas: si una dimensión difiere >15 → needs_human_review (flag interno; no bloquea entrega)
  * - Verde no se regala: superar mediana del rubro (calibración en análisis LLM)
  * - PAI: estados claro|difuso|ausente; al discrepar → preferir más severo
  */
@@ -122,7 +122,7 @@ function normalizePaiStatus(v: unknown): PaiStatus {
   return "ausente";
 }
 
-/** Si dos corridas discrepan → preferir el más severo y marcar revisión humana. */
+/** Si dos corridas discrepan → preferir el más severo y marcar flag interno needs_human_review. */
 export function mergePaiChains(
   a: Partial<PaiChain> | null | undefined,
   b: Partial<PaiChain> | null | undefined
