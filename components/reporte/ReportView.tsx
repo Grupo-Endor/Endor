@@ -34,13 +34,6 @@ export function ReportView({
 }) {
   return (
     <article className="mx-auto max-w-2xl space-y-10 px-5 py-12">
-      {report.mock ? (
-        <p className="rounded-xl border border-endor-accent/40 bg-endor-accent/10 px-4 py-3 text-sm text-endor-accent">
-          Reporte de demostración (sin OPENAI_API_KEY o modo mock). La estructura
-          es la real del producto.
-        </p>
-      ) : null}
-
       {report.needs_human_review ? (
         <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           Una o más dimensiones (o eslabones PAI) difieren entre corridas

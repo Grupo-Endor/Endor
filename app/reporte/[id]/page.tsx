@@ -53,6 +53,9 @@ async function loadReport(id: string): Promise<{
           company: intake?.contact?.company,
         };
       }
+      if (data && !data.report) {
+        // Row exists but update never wrote report (legacy bug) — fall through to pending handler below
+      }
     }
   }
 
@@ -65,8 +68,32 @@ async function loadReport(id: string): Promise<{
     return { report: row.report, company: row.intake.contact.company };
   }
 
-  // Último recurso: reporte mock genérico con el id
-  const fallback = buildMockReport({
+  // Si hay fila en analyzing sin report aún, o id desconocido: no fingir demo.
+  if (hasSupabaseEnv()) {
+    const supabase = createServerClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from("diagnoses")
+        .select("intake, status, company_name")
+        .eq("id", id)
+        .maybeSingle();
+      if (data) {
+        const intake = data.intake as DiagnosisIntake;
+        const pending = buildMockReport(intake);
+        pending.mock = false;
+        pending.verdict =
+          data.status === "analyzing" || data.status === "intake_received"
+            ? "Tu diagnóstico sigue en proceso. Recarga en unos segundos."
+            : "No encontramos el reporte de este diagnóstico. Si acabas de enviarlo, recarga en unos segundos.";
+        return {
+          report: pending,
+          company: intake?.contact?.company || data.company_name || undefined,
+        };
+      }
+    }
+  }
+
+  const missing = buildMockReport({
     contact: {
       full_name: "—",
       role: "—",
@@ -84,7 +111,9 @@ async function loadReport(id: string): Promise<{
       distinct: "—",
     },
   });
-  return { report: fallback, company: "Tu marca" };
+  missing.mock = false;
+  missing.verdict = "No encontramos este diagnóstico.";
+  return { report: missing, company: "Tu marca" };
 }
 
 export default async function ReportePage({

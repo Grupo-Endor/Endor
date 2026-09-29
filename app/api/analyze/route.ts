@@ -49,11 +49,13 @@ export async function POST(req: Request) {
     if (hasSupabaseEnv()) {
       const insertClient = createServerClient();
       if (insertClient) {
+        // Insert completo de una sola vez: anon no tiene UPDATE RLS y
+        // SUPABASE_SERVICE_ROLE_KEY puede faltar. El análisis ya terminó arriba.
         const { data, error } = await insertClient
           .from("diagnoses")
           .insert({
             intake,
-            status: "analyzing",
+            status,
             sector: intake.scope.sector,
             city: intake.scope.city,
             contact_name: intake.contact.full_name,
@@ -61,7 +63,9 @@ export async function POST(req: Request) {
             contact_phone: intake.contact.whatsapp,
             company_name: intake.contact.company,
             reach: intake.scope.reach,
-            needs_human_review: false,
+            scores: report.dimensions,
+            report,
+            needs_human_review: report.needs_human_review,
           })
           .select("id")
           .single();
@@ -72,16 +76,19 @@ export async function POST(req: Request) {
         } else {
           id = data.id as string;
           supabaseOk = true;
-          const updater = createServiceClient() ?? insertClient;
-          await updater
-            .from("diagnoses")
-            .update({
-              status,
-              scores: report.dimensions,
-              report,
-              needs_human_review: report.needs_human_review,
-            })
-            .eq("id", id);
+          // Best-effort update path if service role exists (e.g. later email_sent_at)
+          const updater = createServiceClient();
+          if (updater) {
+            await updater
+              .from("diagnoses")
+              .update({
+                status,
+                scores: report.dimensions,
+                report,
+                needs_human_review: report.needs_human_review,
+              })
+              .eq("id", id);
+          }
         }
       } else {
         mockSave(id, intake, report);
